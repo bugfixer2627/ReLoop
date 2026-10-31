@@ -4,7 +4,8 @@ import { getDatabaseClient } from "@/lib/db/client";
 import { getCaseBundle } from "@/lib/db/cases";
 import { createRevision } from "@/lib/db/workflows";
 import { getAiAdapter, ProviderError } from "@/lib/ai/openai-compatible";
-import { checkListingEvidence } from "@/lib/rules/checker";
+import { checkGeneratedContent, checkListingEvidence } from "@/lib/rules/checker";
+import { validationStatus } from "@/lib/workflows/generation";
 import { checkAccess } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
@@ -38,7 +39,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const listing = artifact.kind === "listing_correction" && artifact.platform
       ? bundle.listings.find((item) => item.platform === artifact.platform)
       : undefined;
-    const findings = listing ? checkListingEvidence(bundle, listing.id) : [];
+    const findings = [
+      ...(listing ? checkListingEvidence(bundle, listing.id) : []),
+      ...checkGeneratedContent(bundle, content, listing?.id),
+    ];
     const saved = await createRevision(db, {
       caseId: bundle.case.id,
       artifactId: id,
@@ -49,7 +53,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       languageStatus: current.languageStatus,
       content,
       sourceIds: current.sourceIds,
-      validationStatus: current.validationStatus,
+      validationStatus: validationStatus(bundle, findings),
       findings,
     });
     const updated = await getCaseBundle(db, bundle.case.id);

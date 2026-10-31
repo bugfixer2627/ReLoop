@@ -1,6 +1,6 @@
 # Person 2: workflow implementation boundary
 
-Implement support and listing repair against one `caseId`, using Person 3's repositories and checkers. API routes in this foundation return HTTP 501 until real implementations replace them.
+Implement support and listing repair against one `caseId`, using Person 3's repositories and checkers. Generation, revision and review routes now persist through the workflow RPCs; task persistence remains a Person 3 handoff item.
 
 Both `support_reply` and `listing_correction` support unlimited revisions. The demo must show **two follow-up instructions for the support reply and two for at least one listing correction**, each reaching saved v1 → v2 → v3. Every other listing is also revisable through the same API. This is the user's clarification, not a new organizer requirement.
 

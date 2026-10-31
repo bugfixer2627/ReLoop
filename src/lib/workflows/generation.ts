@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCaseBundle } from "@/lib/db/cases";
 import { createArtifactVersion } from "@/lib/db/workflows";
 import type { CaseBundle, Platform } from "@/lib/contracts";
-import { checkListingEvidence } from "@/lib/rules/checker";
+import { checkGeneratedContent, checkListingEvidence } from "@/lib/rules/checker";
 import { getAiAdapter, ProviderError } from "@/lib/ai/openai-compatible";
 
 const platforms: Platform[] = ["shopify_us", "amazon_de", "alibaba_intl"];
@@ -15,7 +15,8 @@ function sourceIds(bundle: CaseBundle) {
   ])];
 }
 
-function validationStatus(bundle: CaseBundle) {
+export function validationStatus(bundle: CaseBundle, findings: { category: string; evidence_status?: string | null }[] = []) {
+  if (findings.some((finding) => finding.category === "evidence" && ["needs_evidence", "unverified_observation"].includes(finding.evidence_status ?? ""))) return "needs_evidence" as const;
   return bundle.rules.some((rule) => rule.status === "needs_rule_verification")
     ? "needs_rule_verification" as const
     : "checked" as const;
@@ -34,7 +35,7 @@ export async function generateAnalysis(db: SupabaseClient, bundle: CaseBundle) {
   if (!adapter) throw new ProviderError("NOT_CONFIGURED", 503, false);
   await adapter.extract(bundle);
   const content = await adapter.summarize(bundle, bundle.case.merchantLocale);
-  const findings = checkListingEvidence(bundle);
+  const findings = [...checkListingEvidence(bundle), ...checkGeneratedContent(bundle, content)];
   await createArtifactVersion(db, {
     caseId: bundle.case.id,
     kind: "investigation_summary",
@@ -45,7 +46,7 @@ export async function generateAnalysis(db: SupabaseClient, bundle: CaseBundle) {
     languageStatus: "beta",
     content,
     sourceIds: sourceIds(bundle),
-    validationStatus: validationStatus(bundle),
+    validationStatus: validationStatus(bundle, findings),
     findings,
   });
   return reload(db, bundle.case.id);
@@ -57,6 +58,7 @@ export async function generateSupport(db: SupabaseClient, bundle: CaseBundle) {
   const adapter = getAiAdapter();
   if (!adapter) throw new ProviderError("NOT_CONFIGURED", 503, false);
   const content = await adapter.generateSupport(bundle);
+  const findings = checkGeneratedContent(bundle, content);
   await createArtifactVersion(db, {
     caseId: bundle.case.id,
     kind: "support_reply",
@@ -67,7 +69,8 @@ export async function generateSupport(db: SupabaseClient, bundle: CaseBundle) {
     languageStatus: "beta",
     content,
     sourceIds: sourceIds(bundle),
-    validationStatus: validationStatus(bundle),
+    validationStatus: validationStatus(bundle, findings),
+    findings,
   });
   return reload(db, bundle.case.id);
 }
@@ -90,8 +93,8 @@ export async function generateRepair(db: SupabaseClient, bundle: CaseBundle) {
       languageStatus: "beta",
       content,
       sourceIds: [listing.id, ...bundle.evidence.map((source) => source.id), ...bundle.rules.map((rule) => rule.id)],
-      validationStatus: validationStatus(bundle),
-      findings: checkListingEvidence(bundle, listing.id),
+      validationStatus: validationStatus(bundle, [...checkListingEvidence(bundle, listing.id), ...checkGeneratedContent(bundle, content, listing.id)]),
+      findings: [...checkListingEvidence(bundle, listing.id), ...checkGeneratedContent(bundle, content, listing.id)],
     });
   }
   return reload(db, bundle.case.id);

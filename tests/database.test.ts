@@ -11,6 +11,7 @@ const listingId = "00000000-0000-4000-8000-000000000202";
 let seed: string;
 let reset: string;
 let workflowMigration: string;
+let revalidationMigration: string;
 
 async function createArtifact(id = supportId, kind = "support_reply") {
   await db.query("insert into artifacts(id, case_id, kind, platform, market, segment) values ($1, $2, $3, 'shopify_us', 'US', 'b2c')", [id, caseId, kind]);
@@ -27,10 +28,11 @@ beforeAll(async () => {
   const migration = await readFile(new URL("../supabase/migrations/202610310001_foundation.sql", import.meta.url), "utf8");
   const skuMigration = await readFile(new URL("../supabase/migrations/202610310002_generate_product_sku.sql", import.meta.url), "utf8");
   workflowMigration = await readFile(new URL("../supabase/migrations/202610310003_workflow_writes.sql", import.meta.url), "utf8");
+  revalidationMigration = await readFile(new URL("../supabase/migrations/202610310004_workflow_revalidation.sql", import.meta.url), "utf8");
   seed = await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8");
   reset = await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8");
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-  await db.exec(`begin; ${migration} ${skuMigration} ${workflowMigration} ${seed} commit;`);
+  await db.exec(`begin; ${migration} ${skuMigration} ${workflowMigration} ${revalidationMigration} ${seed} commit;`);
 }, 60000);
 
 beforeEach(async () => { await db.exec("begin"); });
@@ -172,6 +174,7 @@ describe("PostgreSQL foundation migration and persistence invariants", () => {
       )`, [caseId, created.rows[0].artifact_id],
     );
     expect(revised.rows[0].version).toBe(2);
+    await db.exec("savepoint stale_revision");
     await expect(db.query(
       `select * from reloop_create_revision(
         $1, $2, 1, 'Stale', 'en-US', 'en-US', 'beta',
@@ -179,5 +182,13 @@ describe("PostgreSQL foundation migration and persistence invariants", () => {
         array['SPEC-001'], 'needs_rule_verification', '[]'::jsonb
       )`, [caseId, created.rows[0].artifact_id],
     )).rejects.toThrow(/CONFLICT/);
+    await db.exec("rollback to savepoint stale_revision");
+    await db.exec("savepoint stale_review");
+    await expect(db.query(
+      `select * from reloop_record_review(
+        $1, $2, 1, 'compliance', 'approved', 'Stale review'
+      )`, [caseId, created.rows[0].artifact_id],
+    )).rejects.toThrow(/CONFLICT/);
+    await db.exec("rollback to savepoint stale_review");
   });
 });

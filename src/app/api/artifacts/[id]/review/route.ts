@@ -48,6 +48,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return apiSuccess({ caseId: bundle.case.id, artifactId: id, version: updatedVersion, auditEvent });
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_FOUND") return apiFailure("NOT_FOUND", "Artifact version not found.", 404);
+    if (error instanceof Error && error.message === "CONFLICT") return apiFailure("CONFLICT", "Only the current artifact version can be reviewed.", 409);
     return apiFailure("DATABASE_UNAVAILABLE", "Could not persist the review.", 503, true);
   }
 }

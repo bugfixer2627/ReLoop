@@ -1,6 +1,6 @@
 # Foundation verification — 31 October 2026
 
-Milestone: shared main-branch scaffold, not the completed competition MVP.
+Milestone: Person 2 backend and AI stabilization on `feat/ai-api`; this is not the completed competition MVP.
 
 ## Verified
 

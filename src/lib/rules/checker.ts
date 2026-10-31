@@ -1,4 +1,4 @@
-import type { CaseBundle } from "@/lib/contracts";
+import type { ArtifactContent, CaseBundle } from "@/lib/contracts";
 import type { WorkflowFinding } from "@/lib/db/workflows";
 
 function sameConditions(left: Record<string, string>, right: Record<string, string>) {
@@ -61,6 +61,46 @@ export function checkListingEvidence(bundle: CaseBundle, listingId?: string): Wo
         explanation_en: "This law or platform rule still requires verification against current official text and date; it is not a confirmed violation.",
       });
     }
+  }
+  return findings;
+}
+
+export function checkGeneratedContent(bundle: CaseBundle, content: ArtifactContent, listingId?: string): WorkflowFinding[] {
+  const specification = bundle.evidence.find((source) => source.kind === "specification" && source.numericClaim);
+  const policy = bundle.evidence.find((source) => source.kind === "support_policy");
+  const text = JSON.stringify(content);
+  const findings: WorkflowFinding[] = [];
+  const runtime = /\b(?:up\s*to|up-to|maximum|max)\s*(\d+(?:\.\d+)?)\s*(?:hours?|h)\b/i.exec(text);
+  if (specification?.numericClaim && runtime && Number(runtime[1]) > specification.numericClaim.value) {
+    findings.push({
+      listing_id: listingId ?? null,
+      category: "evidence",
+      severity: "warning",
+      code: "UNSUPPORTED_RUNTIME_CLAIM",
+      evidence_status: "needs_evidence",
+      source_ids: [specification.id],
+      original_span: null,
+      proposed_span: runtime[0],
+      explanation_zh: `生成内容包含${runtime[1]}小时运行时间，但现有规格仅记录${specification.numericClaim.value}小时；需要在相同测试条件下补充证据。`,
+      explanation_en: `The generated content claims ${runtime[1]} hours while the available specification records ${specification.numericClaim.value} hours; comparable evidence is required.`,
+    });
+  }
+
+  const unsupportedCommitment = /\b(?:we\s+will|we\s+can\s+provide|eligible\s+for|includes|guaranteed|certified)\b[^.!?]{0,80}\b(?:refund|replacement|warranty|certification|certificate|price)\b/i.exec(text)
+    ?? /\b(?:refund|replacement|warranty|certification|certificate|price)\b[^.!?]{0,80}\b(?:guaranteed|included|approved|will)\b/i.exec(text);
+  if (unsupportedCommitment) {
+    findings.push({
+      listing_id: listingId ?? null,
+      category: "evidence",
+      severity: "blocker",
+      code: "UNSUPPORTED_COMMERCIAL_COMMITMENT",
+      evidence_status: "needs_evidence",
+      source_ids: policy ? [policy.id] : [specification?.id ?? bundle.evidence[0]?.id ?? "generated-content"],
+      original_span: null,
+      proposed_span: unsupportedCommitment[0],
+      explanation_zh: "生成内容包含退款、替换、保修、认证、价格或类似承诺，现有证据不足以支持该表述。",
+      explanation_en: "The generated content contains a refund, replacement, warranty, certification, price, or similar commitment that the retrieved evidence does not support.",
+    });
   }
   return findings;
 }

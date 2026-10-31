@@ -1,6 +1,6 @@
 # Shared API contract v1 — foundation handoff
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health and case list/create/get routes are implemented; remaining business routes return HTTP 501.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case, generation, revision, review and transcription routes are implemented behind the demo-access gate; task persistence still depends on the remaining Person 3 integration.
 
 Case routes require `Authorization: Bearer <DEMO_ACCESS_TOKEN>`. Configure a strong shared token on the server. Until a secure login/session UI is implemented, do not embed the token in frontend code or expose it publicly. Cross-origin writes are rejected.
 
@@ -23,7 +23,7 @@ Case routes require `Authorization: Bearer <DEMO_ACCESS_TOKEN>`. Configure a str
 | 409 | `CONFLICT` for stale version |
 | 413 / 415 | `AUDIO_TOO_LARGE` / `UNSUPPORTED_AUDIO` |
 | 422 | `INVALID_MODEL_OUTPUT`, `REVIEW_BLOCKED`; missing evidence/rule when it prevents the operation |
-| 429 / 501 | `RATE_LIMITED` / `NOT_IMPLEMENTED` |
+| 429 | `RATE_LIMITED` |
 | 503 / 504 | `NOT_CONFIGURED`, `DATABASE_UNAVAILABLE` / `MODEL_TIMEOUT` |
 | 502 / 500 | `TRANSCRIPTION_FAILED` / sanitized `INTERNAL_ERROR` |
 
