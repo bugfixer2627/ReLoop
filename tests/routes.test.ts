@@ -9,7 +9,6 @@ import { GET as health } from "@/app/api/health/route";
 import { POST as support } from "@/app/api/cases/[id]/support/route";
 import { POST as repair } from "@/app/api/cases/[id]/repair/route";
 import { POST as revise } from "@/app/api/artifacts/[id]/revise/route";
-import { POST as transcribe } from "@/app/api/transcribe/route";
 
 beforeEach(() => { getDatabaseClient.mockReset(); });
 
@@ -36,7 +35,7 @@ describe("foundation routes", () => {
     expect(body.data.database).toBe("unreachable");
     expect(JSON.stringify(body)).not.toContain("Secret URI");
   });
-  it.each([support, repair, revise, transcribe])("does not simulate an unimplemented workflow", async (route) => {
+  it.each([support, repair, revise])("does not simulate an unimplemented workflow", async (route) => {
     const response = await route();
     const body = await response.json();
     expect(response.status).toBe(501);

@@ -15,5 +15,9 @@ export interface AiAdapter {
 }
 
 export interface TranscriptionAdapter {
-  transcribe(audio: Uint8Array, mimeType: string, locale: InputLocale): Promise<{ text: string; locale: InputLocale }>;
+  transcribe(audio: Uint8Array, mimeType: string, locale: InputLocale): Promise<{
+    text: string;
+    locale: InputLocale;
+    durationSeconds: number;
+  }>;
 }

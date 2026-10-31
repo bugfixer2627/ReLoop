@@ -124,7 +124,8 @@ export const transcriptionResponseSchema = responseSchema(z.object({
 export const healthDataSchema = z.object({
   stage: z.literal("foundation"), status: z.enum(["ok", "degraded"]),
   database: z.enum(["not_configured", "reachable", "unreachable"]),
-  generation: z.literal("not_implemented"), transcription: z.literal("not_implemented"),
+  generation: z.enum(["not_implemented", "not_configured", "configured"]),
+  transcription: z.enum(["not_implemented", "not_configured", "configured"]),
 });
 export const healthResponseSchema = responseSchema(healthDataSchema);
 export type ApiErrorCode = z.infer<typeof errorCodeSchema>;
