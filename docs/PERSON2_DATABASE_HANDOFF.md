@@ -12,6 +12,13 @@ to lock the artifact head and reject stale review versions. Do not recreate the
 artifact or revision functions in a later migration with the same signature.
 
 The local database test runs all migrations plus `supabase/seed.sql` in PGlite.
+The additive `202611010005_workflow_review_fix.sql` fixes an ambiguous column
+in the Person 2 review RPC and enforces reviewer/approval checks in its locked
+transaction. Published 003/004 remain unchanged. Do not apply this to a hosted
+database until its owner approves the exact environment and migration history.
+Additive 202611010006_workflow_write_audit.sql serializes initial allocation
+using a case lock and writes generation/revision audit events transactionally.
+It changes only Person 2 RPCs and preserves all published migration files.
 It verifies immutable versions, v1 → v2 → v3 history, RLS, append-only audit
 rows, RPC writes and stale revision conflict handling.
 
@@ -20,7 +27,7 @@ rows, RPC writes and stale revision conflict handling.
 - Replace candidate rule records with official, dated, checked excerpts before
   claiming compliance. Until then, generated artifacts intentionally remain
   `needs_rule_verification`.
-- Complete `/api/cases/:id/tasks` persistence and source-ID validation.
+- Task persistence and route-level source-ID validation already exist here and pass SQL-backed API tests. The earlier handoff incorrectly described them as missing. Reconcile the alternate task RPC signatures before merging feat/backend.
 - Keep rule categories separate (`market_law`, `platform_rule`,
   `merchant_policy`) and preserve the case/version composite relationships.
 - Verify hosted Supabase migrations with a dedicated synthetic project. No

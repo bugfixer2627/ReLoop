@@ -1,4 +1,15 @@
-# Foundation verification — 31 October 2026
+# Current verification — 1 November 2026
+
+The H14–H18 branch integrates the approved frontend from origin/main. Current
+results and exact test boundaries are in [H14_H18_INTEGRATION.md](H14_H18_INTEGRATION.md).
+The current suite contains 114 tests across 14 files, including actual local
+SQL-backed API routes with mocked AI HTTP. Real Supabase/AI/speech and the two
+complete live demos remain unverified. No hosted database writes were made.
+
+The following is the preserved historical foundation report. Its test counts,
+fixture-only UI description and 501 routes do not describe the current branch.
+
+## Historical foundation verification — 31 October 2026
 
 Milestone: Person 2 backend and AI stabilization on `feat/ai-api`; this is not the completed competition MVP.
 

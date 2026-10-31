@@ -29,6 +29,8 @@ beforeAll(async () => {
   const skuMigration = await readFile(new URL("../supabase/migrations/202610310002_generate_product_sku.sql", import.meta.url), "utf8");
   workflowMigration = await readFile(new URL("../supabase/migrations/202610310003_workflow_writes.sql", import.meta.url), "utf8");
   revalidationMigration = await readFile(new URL("../supabase/migrations/202610310004_workflow_revalidation.sql", import.meta.url), "utf8");
+  revalidationMigration += await readFile(new URL("../supabase/migrations/202611010005_workflow_review_fix.sql", import.meta.url), "utf8");
+  revalidationMigration += await readFile(new URL("../supabase/migrations/202611010006_workflow_write_audit.sql", import.meta.url), "utf8");
   seed = await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8");
   reset = await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8");
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");

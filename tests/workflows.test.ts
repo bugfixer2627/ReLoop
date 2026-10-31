@@ -11,7 +11,7 @@ vi.mock("@/lib/ai/openai-compatible", () => ({ getAiAdapter: mocks.getAiAdapter 
 vi.mock("@/lib/db/workflows", () => ({ createArtifactVersion: mocks.createArtifactVersion }));
 vi.mock("@/lib/db/cases", () => ({ getCaseBundle: mocks.getCaseBundle }));
 
-import { generateAnalysis, generateRepair, generateSupport } from "@/lib/workflows/generation";
+import { generateAnalysis, generateRepair, generateSupport, validationStatus } from "@/lib/workflows/generation";
 
 const db = {} as never;
 
@@ -40,6 +40,14 @@ beforeEach(() => {
 });
 
 describe("persisted workflow acceptance paths", () => {
+  it("does not mark missing rules or source-only verification as a completed rule check", () => {
+    const bundle = structuredClone(demoBundle);
+    bundle.rules = [];
+    expect(validationStatus(bundle)).toBe("needs_rule_verification");
+    bundle.rules = demoBundle.rules.map((rule) => ({ ...rule, status: "verified", excerpt: "Test fixture only", checkedAt: "2026-11-01T00:00:00Z" }));
+    expect(validationStatus(bundle)).toBe("needs_rule_verification");
+    expect(validationStatus(bundle, [{ category: "market_law", rule_status: "verified", code: "RULE_REQUIRES_VERIFICATION" }])).toBe("needs_rule_verification");
+  });
   it("keeps one case ID and preserves Chinese analysis output locale", async () => {
     await generateAnalysis(db, demoBundle);
     const input = mocks.createArtifactVersion.mock.calls[0][1];

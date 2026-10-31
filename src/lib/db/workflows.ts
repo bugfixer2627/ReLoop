@@ -23,9 +23,13 @@ function firstRow<T>(data: T | T[] | null) {
 
 function assertRpc<T extends Record<string, unknown>>(data: T | T[] | null, error: unknown) {
   if (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // PostgREST errors are plain objects, not Error instances.
+    const message = typeof error === "object" && error !== null && "message" in error
+      ? String(error.message) : String(error);
     if (/CONFLICT/i.test(message)) throw new Error("CONFLICT");
     if (/NOT_FOUND/i.test(message)) throw new Error("NOT_FOUND");
+    if (/REVIEW_BLOCKED/i.test(message)) throw new Error("REVIEW_BLOCKED");
+    if (/INVALID_REQUEST/i.test(message)) throw new Error("INVALID_REQUEST");
     throw new Error("Database workflow write failed");
   }
   const row = firstRow(data);

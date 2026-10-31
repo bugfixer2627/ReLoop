@@ -29,7 +29,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const version = bundle.versions.find((item) => item.artifactId === id && item.version === parsed.data.version);
     if (!artifact || !version) return apiFailure("NOT_FOUND", "Artifact version not found.", 404);
     if (artifact.latestVersion !== version.version) return apiFailure("CONFLICT", "Only the current artifact version can be reviewed.", 409);
-    if (version.validationStatus !== "checked" || bundle.findings.some((finding) => finding.artifactVersionId === version.id && finding.severity === "blocker")) {
+    const roleAllowed = artifact.kind === "support_reply"
+      ? parsed.data.reviewerRole === "support"
+      : artifact.kind === "listing_correction" && ["marketing", "compliance"].includes(parsed.data.reviewerRole);
+    if (!roleAllowed) return apiFailure("INVALID_REQUEST", "This reviewer role cannot review this artifact kind.", 400);
+    if (parsed.data.decision === "approved" && (version.validationStatus !== "checked" || bundle.findings.some((finding) => finding.artifactVersionId === version.id && (finding.severity === "blocker" || finding.evidenceStatus === "needs_evidence" || finding.ruleStatus === "needs_rule_verification")))) {
       return apiFailure("REVIEW_BLOCKED", "This version still has unresolved evidence or rule checks.", 422);
     }
     const saved = await recordReview(db, {
@@ -47,6 +51,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!updatedVersion || !auditEvent) throw new Error("DATABASE");
     return apiSuccess({ caseId: bundle.case.id, artifactId: id, version: updatedVersion, auditEvent });
   } catch (error) {
+    if (error instanceof Error && error.message === "REVIEW_BLOCKED") return apiFailure("REVIEW_BLOCKED", "This version still has unresolved evidence or rule checks.", 422);
+    if (error instanceof Error && error.message === "INVALID_REQUEST") return apiFailure("INVALID_REQUEST", "This reviewer role cannot review this artifact kind.", 400);
     if (error instanceof Error && error.message === "NOT_FOUND") return apiFailure("NOT_FOUND", "Artifact version not found.", 404);
     if (error instanceof Error && error.message === "CONFLICT") return apiFailure("CONFLICT", "Only the current artifact version can be reviewed.", 409);
     return apiFailure("DATABASE_UNAVAILABLE", "Could not persist the review.", 503, true);

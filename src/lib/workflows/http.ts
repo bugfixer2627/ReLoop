@@ -42,6 +42,7 @@ export async function generationRoute(
   } catch (error) {
     if (error instanceof ProviderError) return providerFailure(error);
     const message = error instanceof Error ? error.message : "";
+    if (message === "NEEDS_EVIDENCE") return apiFailure("NEEDS_EVIDENCE", "Documented product evidence and test conditions are required before generation.", 422);
     if (message === "NOT_FOUND") return apiFailure("NOT_FOUND", "Artifact or case not found.", 404);
     if (message === "CONFLICT") return apiFailure("CONFLICT", "The artifact changed. Reload and try again.", 409);
     return apiFailure("DATABASE_UNAVAILABLE", "Could not persist the generated result.", 503, true);

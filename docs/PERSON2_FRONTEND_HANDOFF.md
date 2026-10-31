@@ -33,5 +33,4 @@ findings visually separate. Amazon Germany is currently an English internal
 brief (`internalBrief:true`); do not label it as a German customer listing.
 No endpoint publishes, refunds, or sends an external message.
 
-The current app screens still render the synthetic fixture. Connecting them to
-the persisted case and workflow responses is the next frontend task.
+The merged frontend calls the actual case/workflow APIs and does not silently substitute fixtures. User-entered bearer access held in memory is supported for both business and speech routes. Login is required again after a full reload. See H14_H18_INTEGRATION.md for exact remaining integration work.

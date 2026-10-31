@@ -45,7 +45,7 @@ export function demoAccessFailure(request: Request) {
   if (expected.length < 32) {
     return apiFailure("NOT_CONFIGURED", "Demo access is misconfigured.", 503);
   }
-  if (demoTokenIsValid(readDemoAccessToken(request))) return null;
+  if (demoTokenIsValid(bearerToken(request) || readDemoAccessToken(request))) return null;
   return apiFailure("UNAUTHORIZED", "Demo access is required.", 401);
 }
 

@@ -1,8 +1,8 @@
 # Shared API contract v1 — foundation handoff
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case, generation, revision, review and transcription routes are implemented behind the demo-access gate; task persistence still depends on the remaining Person 3 integration.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require coordination with Persons 1/3. Case, generation, revision, review, task and transcription routes are implemented on feat/ai-api. Health is public. Hosted integration and checked rule evaluations remain unverified.
 
-Case routes require `Authorization: Bearer <DEMO_ACCESS_TOKEN>`. Configure a strong shared token on the server. Until a secure login/session UI is implemented, do not embed the token in frontend code or expose it publicly. Cross-origin writes are rejected.
+Protected routes accept `Authorization: Bearer <DEMO_ACCESS_TOKEN>` or the HttpOnly cookie issued by `/api/access`. The token requires at least 32 characters. The login UI uses a user-entered token in memory; never bake it into bundles. Transcription accepts both authentication forms. Cross-origin writes are rejected; cookie mutations require Origin while authenticated bearer CLI uploads may omit it.
 
 ## Envelopes
 

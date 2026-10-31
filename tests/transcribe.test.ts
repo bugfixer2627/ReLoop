@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { transcriptionResponseSchema } from "@/lib/contracts";
 
 vi.mock("server-only", () => ({}));
@@ -9,13 +9,15 @@ vi.mock("@/lib/ai/openai-compatible", async (importOriginal) => ({
 }));
 
 import { POST } from "@/app/api/transcribe/route";
+import { ProviderError } from "@/lib/ai/openai-compatible";
+let requestNumber = 0;
 
 function request(locale = "en-US", mimeType = "audio/webm", bytes = new Uint8Array([1, 2, 3])) {
   const form = new FormData();
   form.set("locale", locale);
   form.set("audio", new File([bytes], "sample.webm", { type: mimeType }));
   return new Request("http://localhost/api/transcribe", {
-    method: "POST", headers: { Origin: "http://localhost" }, body: form,
+    method: "POST", headers: { Origin: "http://localhost", "x-real-ip": String(++requestNumber) }, body: form,
   });
 }
 
@@ -42,6 +44,7 @@ function wav(seconds: number) {
 }
 
 describe("POST /api/transcribe", () => {
+  afterEach(() => { delete process.env.DEMO_ACCESS_TOKEN; });
   beforeEach(() => {
     getTranscriptionAdapter.mockReset();
     delete process.env.DEMO_ACCESS_TOKEN;
@@ -101,5 +104,39 @@ describe("POST /api/transcribe", () => {
     const response = await POST(request());
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({ ok: false, error: { code: "UNAUTHORIZED" } });
+  });
+
+  it.each(["zh-CN", "en-US"])("accepts the frontend bearer flow without a cookie: %s", async (locale) => {
+    process.env.DEMO_ACCESS_TOKEN = "b".repeat(32);
+    const audioRequest = request(locale);
+    audioRequest.headers.set("authorization", "Bearer " + process.env.DEMO_ACCESS_TOKEN);
+    audioRequest.headers.delete("origin");
+    getTranscriptionAdapter.mockReturnValue({ transcribe: vi.fn().mockResolvedValue({ text: locale === "zh-CN" ? "请保留测试条件。" : "Keep the test conditions.", locale, durationSeconds: 3 }) });
+    const response = await POST(audioRequest);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, data: { locale, requiresConfirmation: true } });
+  });
+
+  it("rejects cross-origin bearer uploads before provider use", async () => {
+    process.env.DEMO_ACCESS_TOKEN = "b".repeat(32);
+    const audioRequest = request();
+    audioRequest.headers.set("authorization", "Bearer " + process.env.DEMO_ACCESS_TOKEN);
+    audioRequest.headers.set("origin", "https://other.invalid");
+    expect((await POST(audioRequest)).status).toBe(403);
+    expect(getTranscriptionAdapter).not.toHaveBeenCalled();
+  });
+
+  it.each([["MODEL_TIMEOUT", 504], ["TRANSCRIPTION_FAILED", 502]] as const)("returns a sanitized %s without transcript", async (code, status) => {
+    getTranscriptionAdapter.mockReturnValue({ transcribe: vi.fn().mockRejectedValue(new ProviderError(code, status, true)) });
+    const response = await POST(request());
+    expect(response.status).toBe(status);
+    expect(await response.json()).toMatchObject({ ok: false, data: null, error: { code } });
+  });
+
+  it("rejects uploads with a declared body larger than 10 MiB", async () => {
+    const audioRequest = request();
+    audioRequest.headers.set("content-length", String(11 * 1024 * 1024));
+    expect((await POST(audioRequest)).status).toBe(413);
+    expect(getTranscriptionAdapter).not.toHaveBeenCalled();
   });
 });
