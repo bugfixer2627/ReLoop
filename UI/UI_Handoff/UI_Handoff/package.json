@@ -1,0 +1,21 @@
+{
+  "name": "reloop-ui-handoff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Source-only UI handoff for integration into an existing Next.js App Router application; demo state is not a production service.",
+  "peerDependencies": {
+    "next": "^16.2.12",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "reloopTestedToolchain": {
+    "node": "24.14.1",
+    "typescript": "5.9.3",
+    "tailwindcss": "3.4.19",
+    "postcss": "8.5.32",
+    "autoprefixer": "10.4.27",
+    "@types/node": "20.19.43",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7"
+  }
+}

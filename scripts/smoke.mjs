@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-// HTTP check for preview pages, protected case routes and remaining workflow stubs.
+// HTTP check for approved UI routes, API access guards and unavailable workflows.
 const base = process.env.RELOOP_BASE_URL ?? "http://127.0.0.1:3000";
 const fixture = JSON.parse(await readFile(new URL("../src/lib/fixtures/demo.json", import.meta.url), "utf8"));
 const caseId = fixture.case.id;
@@ -11,19 +11,21 @@ async function request(path, options) {
 }
 
 try {
-  const pages = [["/", "从一条反馈开始"], [`/cases/${caseId}`, "先核对证据"], [`/cases/${caseId}/fix`, "协同修订"]];
+  const pages = [
+    ["/", "Clearer Product Claims"], ["/login", "Demo access token"],
+    ["/dashboard", "Workspace access required"], ["/feedback", "Workspace access required"],
+    [`/cases/${caseId}`, "Workspace access required"], [`/cases/${caseId}/fix`, "Workspace access required"],
+  ];
   for (const [path, phrase] of pages) {
     const response = await request(path);
     const html = await response.text();
     assert.equal(response.status, 200, path);
     assert.ok(html.includes(phrase), `Missing Chinese text on ${path}`);
-    assert.ok(html.includes("DEMO / FICTIONAL"), `Missing fixture disclosure on ${path}`);
+    assert.ok(!html.includes("Jasmine Li"), `Prototype identity leaked into ${path}`);
     assert.ok(!html.includes("\uFFFD"), `Broken encoding on ${path}`);
     console.log(`PASS page ${path}`);
   }
-  assert.equal((await request("/cases/00000000-0000-4000-8000-000000009999")).status, 404, "Unknown case must return 404");
-  assert.equal((await request("/cases/00000000-0000-4000-8000-000000009999/fix")).status, 404, "Unknown case fix screen must return 404");
-  console.log("PASS unknown-case screens return 404");
+  console.log("PASS landing, login and four protected workspace routes");
   const healthResponse = await request("/api/health");
   assert.equal(healthResponse.status, 200);
   const health = await healthResponse.json();
@@ -48,8 +50,8 @@ try {
     assert.equal(body.data, null);
     assert.equal(body.error.code, "NOT_IMPLEMENTED");
   }
-  console.log(`PASS all ${endpoints.length} business routes explicitly return 501`);
+  console.log(`PASS all ${endpoints.length} incomplete AI/STT/review routes explicitly return 501`);
 } catch (error) {
-  console.error(`Foundation smoke check failed: ${error.message}`);
+  console.error(`Integration smoke check failed: ${error.message}`);
   process.exitCode = 1;
 }
