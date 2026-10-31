@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ReLoop Phase 2 layout concept — not production</title>
+  <style>
+    @font-face{font-family:Inter;src:url('../../public/brand/inter-latin-variable.woff2');font-display:swap}
+    :root{--forest:#051c12;--lime:#b4f105;--canvas:#f4f6f5;--line:#e0e8e1;--muted:#5c7163}
+    *{box-sizing:border-box}body{margin:0;color:var(--forest);font:14px/1.6 Inter,'Microsoft YaHei','PingFang SC',sans-serif;background:var(--canvas)}
+    .concept-label{padding:12px 24px;background:#eaf3db;color:#314c27;border-bottom:1px solid #d2e0c2;display:flex;justify-content:space-between;font-size:12px}
+    .shell{display:grid;grid-template-columns:210px minmax(0,1fr);min-height:940px}.sidebar{background:var(--forest);color:#bfd0c3;padding:26px 18px;display:flex;flex-direction:column}.logo{width:152px;height:auto;margin:0 4px 36px}.nav-item{display:flex;gap:12px;padding:12px 14px;border-radius:9px;margin-bottom:6px;font-size:13px}.nav-item span{width:18px;text-align:center}.nav-item.active{background:var(--lime);color:var(--forest);font-weight:600}.sidebar-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:18px 10px;font-size:11px}.sidebar-foot strong{display:block;color:#fff;font-size:12px}
+    .main{min-width:0}.topbar{display:flex;align-items:center;gap:22px;background:white;height:70px;border-bottom:1px solid var(--line);padding:0 28px}.topbar span{color:var(--muted);font-size:12px}.search{border:1px solid var(--line);border-radius:8px;background:#f8faf8;padding:9px 14px;width:340px;margin-left:36px}.profile{margin-left:auto;display:flex;align-items:center;gap:12px}.avatar{background:#edf5d9;border-radius:50%;width:32px;height:32px;display:grid;place-items:center}.content{padding:26px 28px 32px;max-width:1400px}.heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.heading small{color:var(--muted);font-size:11px}.heading h1{font-size:27px;font-weight:600;letter-spacing:-.04em;margin:2px 0 3px}.heading p{color:var(--muted);font-size:13px;margin:0}.badge{font-size:11px;border:1px solid #d6e2d0;background:#f1f7e8;color:#456035;border-radius:6px;padding:4px 9px;white-space:nowrap}.notice{padding:10px 14px;border:1px solid #d9e5d3;background:#eff5ea;border-radius:9px;font-size:12px;color:#4b6345;margin-bottom:16px}.grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:16px}.stack{display:grid;gap:16px;align-content:start}.card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:19px}.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}.card h2{font-size:15px;font-weight:600;margin:0}.card p{font-size:12px;color:var(--muted);margin:8px 0}.empty{border:1px dashed #cfdbce;border-radius:9px;padding:27px 16px;text-align:center;background:#fbfcfa;color:var(--muted);min-height:130px;display:flex;flex-direction:column;justify-content:center}.empty strong{font-size:13px;font-weight:500}.empty small{font-size:11px;margin-top:5px}.tabs{display:flex;gap:7px;margin-bottom:15px;border-bottom:1px solid var(--line);padding-bottom:12px}.tab{padding:7px 10px;color:var(--muted);font-size:11px;border-radius:7px;background:#f5f7f3}.tab.active{color:var(--forest);background:#e9f2d9;font-weight:600}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.compare .empty{min-height:180px;text-align:left;align-items:flex-start}.column-label{font-size:11px;color:var(--muted);display:block;margin-bottom:8px}.mini-actions{display:flex;gap:7px;margin-bottom:13px}.muted-action{font-size:11px;padding:7px 10px;border:1px solid #dde5d9;border-radius:7px;color:#64775d;background:#f9fbf5}.history{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--line);margin-top:16px;color:var(--muted);font-size:11px}.footer{font-size:11px;color:var(--muted);margin-top:18px}.lineage{display:flex;gap:10px;margin-top:12px;font-size:11px;color:#6f806a}
+    @media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}.grid{grid-template-columns:1fr}.search{display:none}.content{padding:20px}.compare{grid-template-columns:1fr}.heading{display:block}.concept-label{display:block}}
+  </style>
+</head>
+<body>
+  <div class="concept-label"><strong>Phase 2 视觉概念 · 未实施 / Layout concept only</strong><span>现有组件重新排布 · 空状态 · 无实时案例或 AI 结果</span></div>
+  <div class="shell">
+    <aside class="sidebar"><img class="logo" src="../../public/brand/reloop-wordmark-on-dark.png" width="1791" height="492" alt="ReLoop"><div class="nav-item"><span>▦</span>工作台</div><div class="nav-item"><span>▤</span>反馈收件箱</div><div class="nav-item"><span>⌕</span>承诺核验</div><div class="nav-item active"><span>✓</span>修订与审核</div><div class="sidebar-foot"><strong>ReLoop 工作台</strong>受保护的演示工作区</div></aside>
+    <main class="main">
+      <div class="topbar"><span>☰</span><strong>创建 ＋</strong><div class="search"><span>搜索案例</span></div><div class="profile"><span>中文 / EN</span><div class="avatar">R</div><span>ReLoop 工作台</span></div></div>
+      <div class="content">
+        <div class="heading"><div><small>现有修订工作区 · 布局预览</small><h1>修订与审核</h1><p>客服回复与平台 Listing 使用同一案例上下文。</p></div><span class="badge">未选择案例</span></div>
+        <div class="notice">本图只演示现有面板的间距与排列。未生成、保存或审核任何内容。</div>
+        <div class="grid">
+          <div class="stack">
+            <section class="card"><div class="card-head"><h2>客服回复</h2><span class="badge">草稿空状态</span></div><div class="empty"><strong>尚无已保存的客服回复草稿。</strong><small>选择案例后显示实际保存内容。</small></div></section>
+            <section class="card"><div class="card-head"><h2>平台商品修订</h2><span class="badge">仅供人工审核</span></div><div class="tabs"><span class="tab active">Shopify US</span><span class="tab">Amazon Germany</span><span class="tab">Alibaba International</span></div><div class="compare"><div><span class="column-label">原始商品快照</span><div class="empty"><strong>未选择案例</strong><small>此处保留商品原文、来源与版本。</small></div></div><div><span class="column-label">已保存的修订草稿</span><div class="empty"><strong>尚无已保存修订。</strong><small>此处显示服务器保存的版本。</small></div></div></div><div class="history"><span>版本历史</span><span>暂无已保存版本</span></div></section>
+          </div>
+          <div class="stack">
+            <section class="card"><div class="card-head"><h2>质量与合规任务</h2><span class="badge">待选择案例</span></div><div class="mini-actions"><span class="muted-action">＋ 创建 QA 跟进</span><span class="muted-action">＋ 创建合规审核</span></div><div class="empty"><strong>尚无已保存任务。</strong><small>不展示模拟分配或任务状态。</small></div></section>
+            <section class="card"><div class="card-head"><h2>审核与审计记录</h2><span class="badge">空状态</span></div><div class="empty"><strong>尚无已保存的审核或审计记录。</strong><small>只有成功保存的人工操作会显示在此。</small></div></section>
+            <section class="card"><h2>人工审核</h2><p>本概念保留已有审核区域，不改变现有流程。</p><div class="lineage"><span>批准草稿</span><span>请求修改</span><span>拒绝草稿</span></div><div class="history"><span>审核草稿不会自动发布到外部平台。</span></div></section>
+          </div>
+        </div>
+        <p class="footer">设计预览，不是已登录应用截图。所有数据区域保持空状态；后台能力以实际接口为准。</p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
