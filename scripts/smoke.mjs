@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-// Foundation-only HTTP check. Update with real workflow assertions as APIs land.
+// HTTP check for preview pages, protected case routes and remaining workflow stubs.
 const base = process.env.RELOOP_BASE_URL ?? "http://127.0.0.1:3000";
 const fixture = JSON.parse(await readFile(new URL("../src/lib/fixtures/demo.json", import.meta.url), "utf8"));
 const caseId = fixture.case.id;
@@ -32,11 +32,14 @@ try {
   assert.equal(health.data.transcription, "not_implemented");
   console.log(`PASS health: DB ${health.data.database}; generation/transcription not implemented`);
   const endpoints = [
-    ["GET", "/api/cases"], ["POST", "/api/cases"], ["GET", `/api/cases/${caseId}`],
     ...["analyze", "support", "repair", "tasks"].map((name) => ["POST", `/api/cases/${caseId}/${name}`]),
     ...["revise", "review"].map((name) => ["POST", `/api/artifacts/${caseId}/${name}`]),
     ["POST", "/api/transcribe"],
   ];
+  for (const [method, path] of [["GET", "/api/cases"], ["POST", "/api/cases"], ["GET", `/api/cases/${caseId}`]]) {
+    const response = await request(path, { method });
+    assert.ok([401, 503].includes(response.status), `${path} must require demo access`);
+  }
   for (const [method, path] of endpoints) {
     const response = await request(path, { method });
     const body = await response.json();

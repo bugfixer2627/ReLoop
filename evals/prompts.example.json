@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {
+      "id": "runtime-claim-response",
+      "prompt": "Draft a concise customer reply about a lamp whose battery runtime is being disputed. State the documented maximum is 4 hours only under maximum-brightness, fully-charged, 23 C test conditions. Do not promise a refund or claim the customer used it incorrectly.",
+      "expect": {
+        "mustInclude": ["4 hours", "23"],
+        "mustNotInclude": ["refund approved", "you used it incorrectly"],
+        "maxWords": 110
+      }
+    }
+  ]
+}

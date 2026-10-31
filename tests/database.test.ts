@@ -24,10 +24,11 @@ async function addVersion(id: string, version: number) {
 beforeAll(async () => {
   db = new PGlite();
   const migration = await readFile(new URL("../supabase/migrations/202610310001_foundation.sql", import.meta.url), "utf8");
+  const skuMigration = await readFile(new URL("../supabase/migrations/202610310002_generate_product_sku.sql", import.meta.url), "utf8");
   seed = await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8");
   reset = await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8");
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-  await db.exec(`begin; ${migration} ${seed} commit;`);
+  await db.exec(`begin; ${migration} ${skuMigration} ${seed} commit;`);
 }, 60000);
 
 beforeEach(async () => { await db.exec("begin"); });
@@ -44,6 +45,14 @@ describe("PostgreSQL foundation migration and persistence invariants", () => {
     expect((await db.query("select id from rules where verification_status = 'verified'")).rows).toHaveLength(0);
     const result = await db.query<{ merchant_instruction: string }>("select merchant_instruction from cases where id = $1", [caseId]);
     expect(result.rows[0].merchant_instruction).toBe(demoBundle.case.merchantInstruction);
+  });
+  it("generates an internal SKU when seller input omits one", async () => {
+    const result = await db.query<{ sku: string }>(
+      `insert into products(name, attributes_json, source_version, synthetic)
+       values ('Seller product without SKU', '{}', 'test-v1', true)
+       returning sku`,
+    );
+    expect(result.rows[0].sku).toMatch(/^RL-[A-F0-9]{32}$/);
   });
   it("has RLS enabled on all twelve business tables", async () => {
     const result = await db.query("select relname from pg_class join pg_namespace on pg_class.relnamespace = pg_namespace.oid where nspname = 'public' and relkind = 'r' and relrowsecurity");
