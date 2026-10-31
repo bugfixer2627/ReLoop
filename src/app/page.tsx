@@ -8,7 +8,7 @@ export default function LandingPage() {
   return (
     <div className="reloop-ui landing-v2">
       <a className="landing-skip" href="#landing-content">Skip to content</a>
-      <main className="landing-main" id="landing-content" tabIndex={-1}>
+      <main className="landing-main">
       <div className="landing-hero-surface">
         <header className="marketing-nav">
           <Brand dark/>
@@ -23,7 +23,7 @@ export default function LandingPage() {
           </div>
         </header>
 
-        <section className="hero brand-hero" aria-labelledby="landing-title">
+        <section className="hero brand-hero" id="landing-content" tabIndex={-1} aria-labelledby="landing-title">
           <div className="brand-hero-copy">
             <div className="eyebrow"><span className="eyebrow-dot"/>Cross-border product clarity</div>
             <h1 className="display" id="landing-title">Turn Customer Feedback Into <span>Clearer Product Claims</span></h1>

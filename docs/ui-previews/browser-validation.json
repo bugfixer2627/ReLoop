@@ -26,6 +26,11 @@
       "outline": "solid"
     }
   ],
+  "skipTarget": {
+    "id": "landing-content",
+    "containsNavigation": false,
+    "hash": "#landing-content"
+  },
   "reduced": [
     {
       "animation": "none",
