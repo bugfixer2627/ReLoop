@@ -28,24 +28,24 @@ try {
   assert.equal(healthResponse.status, 200);
   const health = await healthResponse.json();
   assert.equal(health.ok, true);
-  assert.equal(health.data.generation, "not_implemented");
-  assert.equal(health.data.transcription, "not_implemented");
-  console.log(`PASS health: DB ${health.data.database}; generation/transcription not implemented`);
+  assert.ok(["not_implemented", "not_configured", "configured"].includes(health.data.generation));
+  assert.ok(["not_implemented", "not_configured", "configured"].includes(health.data.transcription));
+  console.log(`PASS health: DB ${health.data.database}; generation ${health.data.generation}; transcription ${health.data.transcription}`);
   const endpoints = [
     ["GET", "/api/cases"], ["POST", "/api/cases"], ["GET", `/api/cases/${caseId}`],
     ...["analyze", "support", "repair", "tasks"].map((name) => ["POST", `/api/cases/${caseId}/${name}`]),
     ...["revise", "review"].map((name) => ["POST", `/api/artifacts/${caseId}/${name}`]),
-    ["POST", "/api/transcribe"],
+    ["POST", "/api/transcribe", 400, "INVALID_REQUEST"],
   ];
-  for (const [method, path] of endpoints) {
+  for (const [method, path, expectedStatus = 501, expectedCode = "NOT_IMPLEMENTED"] of endpoints) {
     const response = await request(path, { method });
     const body = await response.json();
-    assert.equal(response.status, 501, path);
+    assert.equal(response.status, expectedStatus, path);
     assert.equal(body.ok, false);
     assert.equal(body.data, null);
-    assert.equal(body.error.code, "NOT_IMPLEMENTED");
+    assert.equal(body.error.code, expectedCode);
   }
-  console.log(`PASS all ${endpoints.length} business routes explicitly return 501`);
+  console.log(`PASS ${endpoints.length - 1} foundation routes remain explicit 501 stubs; speech validates requests`);
 } catch (error) {
   console.error(`Foundation smoke check failed: ${error.message}`);
   process.exitCode = 1;

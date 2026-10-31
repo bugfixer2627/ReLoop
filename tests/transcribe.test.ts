@@ -43,6 +43,14 @@ describe("POST /api/transcribe", () => {
     expect(getTranscriptionAdapter).not.toHaveBeenCalled();
   });
 
+  it("rejects an empty request as invalid input", async () => {
+    const response = await POST(new Request("http://localhost/api/transcribe", {
+      method: "POST", headers: { Origin: "http://localhost" },
+    }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ ok: false, error: { code: "INVALID_REQUEST" } });
+  });
+
   it("rejects audio over 60 seconds and returns no transcript", async () => {
     getTranscriptionAdapter.mockReturnValue({
       transcribe: vi.fn().mockResolvedValue({ text: "too long", locale: "en-US", durationSeconds: 61 }),

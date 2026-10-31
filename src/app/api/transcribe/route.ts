@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const MAX_MULTIPART_OVERHEAD = 64 * 1024;
 
 async function readBoundedBody(request: Request, maxBytes: number) {
-  if (!request.body) return null;
+  if (!request.body) return undefined;
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let length = 0;
@@ -70,7 +70,8 @@ export async function POST(request: Request) {
   }
 
   const body = await readBoundedBody(request, MAX_AUDIO_BYTES + MAX_MULTIPART_OVERHEAD);
-  if (!body) return apiFailure("AUDIO_TOO_LARGE", "Audio must be no larger than 10 MiB.", 413);
+  if (body === undefined) return apiFailure("INVALID_REQUEST", "Provide an audio recording and a supported language.", 400);
+  if (body === null) return apiFailure("AUDIO_TOO_LARGE", "Audio must be no larger than 10 MiB.", 413);
 
   let form: FormData;
   try {
