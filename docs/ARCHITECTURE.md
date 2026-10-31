@@ -2,7 +2,7 @@
 
 ## Foundation boundary
 
-Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migration. Preview reads **original synthetic fixture JSON only**. Health can check real configured DB; other APIs are 501 scaffolds. Provider interfaces exist; AI/STT adapters are not implemented.
+Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migration. Preview reads **original synthetic fixture JSON only**. Health and protected case list/create/get routes use the configured database; other business APIs remain 501 scaffolds. Provider interfaces exist; AI/STT adapters are not implemented.
 
 ## Intended completed flow
 
@@ -45,7 +45,7 @@ Generate/validate candidate, lock artifact, recheck `expectedVersion`, insert co
 
 - Service-role/provider keys stay server-only. No `NEXT_PUBLIC_*` credential is needed.
 - All business tables have RLS enabled and grants to anonymous/authenticated/PUBLIC revoked. Trusted server uses service role.
-- Before enabling business APIs on a shared deployment, P2 must add a server-enforced shared demo-access gate. `DEMO_ACCESS_TOKEN` can establish a secure HttpOnly/SameSite session. Validate mutation origin and rate-limit provider calls. A role switch is presentation context, not authorization. Full account management stays outside scope.
+- Case routes require a server-configured `DEMO_ACCESS_TOKEN` as a bearer token and reject cross-origin mutations. A secure login/session UI and provider-call rate limiting are still needed before shared deployment. Never embed the token in frontend code. A role switch is presentation context, not authorization.
 - Public health returns availability enums only; configured DB query has a five-second timeout. No row content, credentials or provider errors are returned.
 - Speech processing is temporary/in-memory, with no raw audio retention. Confirmed editable transcript enters the existing text workflow.
 - Migration/reset is CLI-only against a dedicated demo project; no public reset route.

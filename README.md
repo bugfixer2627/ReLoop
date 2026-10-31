@@ -34,7 +34,7 @@ npm ci
 
 ## What remains for feature branches
 
-**Case creation/loading, model extraction/generation, rule checking, microphone/transcription, revisions, approvals, tasks and audit orchestration are not implemented.** Their API routes return HTTP **501 `NOT_IMPLEMENTED`**, not fake drafts or success. The UI reads only `src/lib/fixtures/demo.json`; it is not a database-backed investigation. Nothing is sent or published externally.
+Case list/create/load routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. No login/session UI is implemented yet. **Model extraction/generation, rule checking, microphone/transcription, revisions, approvals, tasks and audit orchestration are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
 
 Chinese/English generation and voice are P0 targets, not yet tested capabilities. German is P1, Arabic P2. Amazon DE must retain its context and use an explicitly labeled English internal brief if German generation is unavailable. Do not mark languages ready until real flows pass acceptance tests.
 
@@ -77,7 +77,7 @@ npm run build
 
 An independent prompt-routing CLI is available for local experiments; it does not enable product generation endpoints. See [Prompt Router](docs/PROMPT_ROUTER.md) for model selection, explicit eval criteria, bounded escalation, and offline tests.
 
-With the app running, `npm run smoke` checks the three preview routes, unknown-case 404s, health and all ten explicit 501 business stubs. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address. Update this foundation-only smoke script as real workflows replace stubs.
+With the app running, `npm run smoke` checks the preview routes, unknown-case 404s, health, case-route access protection and the remaining 501 workflow stubs. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address.
 
 ## Team handoff
 

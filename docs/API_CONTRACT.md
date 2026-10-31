@@ -1,6 +1,8 @@
 # Shared API contract v1 — foundation handoff
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. This describes intended behavior; only `/api/health` is implemented now. Business routes return HTTP 501 until real operations are added.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health and case list/create/get routes are implemented; remaining business routes return HTTP 501.
+
+Case routes require `Authorization: Bearer <DEMO_ACCESS_TOKEN>`. Configure a strong shared token on the server. Until a secure login/session UI is implemented, do not embed the token in frontend code or expose it publicly. Cross-origin writes are rejected.
 
 ## Envelopes
 
