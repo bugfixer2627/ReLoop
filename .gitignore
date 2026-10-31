@@ -11,3 +11,5 @@ coverage/
 test-results/
 playwright-report/
 .supabase/
+prompt-runs/
+/AGENTS.md
