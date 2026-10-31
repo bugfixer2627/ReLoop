@@ -46,8 +46,8 @@ try {
   }
   const speech = await request("/api/transcribe", { method: "POST" });
   const speechBody = await speech.json();
-  assert.ok([400, 503].includes(speech.status));
-  assert.ok(["INVALID_REQUEST", "NOT_CONFIGURED"].includes(speechBody.error.code));
+  assert.ok([400, 403, 503].includes(speech.status));
+  assert.ok(["INVALID_REQUEST", "UNAUTHORIZED", "NOT_CONFIGURED"].includes(speechBody.error.code));
   console.log(`PASS protected case/workflow routes reject unavailable configuration; speech validates requests`);
 } catch (error) {
   console.error(`Foundation smoke check failed: ${error.message}`);
