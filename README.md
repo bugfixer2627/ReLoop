@@ -15,6 +15,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires a configured Supabase database and `DEMO_ACCESS_TOKEN`; enter that token on `/login`. The token is kept in browser memory only and must be entered again after reload. There is no user-account or cookie-session service on production `main`. [The health endpoint](http://localhost:3000/api/health) reports database availability and generation/transcription implementation status.
 
+If your network requires an HTTP proxy, set `HTTPS_PROXY`, `NODE_USE_ENV_PROXY=1`, and `NO_PROXY=localhost,127.0.0.1` in `.env.local`; the dev launcher passes these settings to Node. To access the dev server through a local network hostname or IP, add it to `NO_PROXY` and set `RELOOP_DEV_ORIGINS` to that hostname or IP (comma-separated for multiple hosts). Restart the dev server after changing proxy settings. Use `http://localhost:3000` when working on the same computer.
+
 On this Windows machine, npm needs the Windows trust store. If npm reports `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, keep TLS validation enabled:
 
 ```powershell
