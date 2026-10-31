@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-31T11:19:15.959Z",
+  "sourceFilesPreserved": 40,
+  "scannedFiles": 74,
+  "typecheckedFiles": 13,
+  "typecheckPassed": true,
+  "sourceHashMatch": true,
+  "excludedArtifactsAbsent": true,
+  "desktopScreenshotDimensions": "1920x1080",
+  "failures": []
+}
