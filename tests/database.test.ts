@@ -25,10 +25,11 @@ beforeAll(async () => {
   db = new PGlite();
   const migration = await readFile(new URL("../supabase/migrations/202610310001_foundation.sql", import.meta.url), "utf8");
   const skuMigration = await readFile(new URL("../supabase/migrations/202610310002_generate_product_sku.sql", import.meta.url), "utf8");
+  const operationsMigration = await readFile(new URL("../supabase/migrations/202610310003_case_operations.sql", import.meta.url), "utf8");
   seed = await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8");
   reset = await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8");
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-  await db.exec(`begin; ${migration} ${skuMigration} ${seed} commit;`);
+  await db.exec(`begin; ${migration} ${skuMigration} ${operationsMigration} ${seed} commit;`);
 }, 60000);
 
 beforeEach(async () => { await db.exec("begin"); });
@@ -36,6 +37,54 @@ afterEach(async () => { await db.exec("rollback"); });
 afterAll(async () => { await db?.close(); });
 
 describe("PostgreSQL foundation migration and persistence invariants", () => {
+  it("saves evidence findings idempotently and rejects unrelated sources", async () => {
+    const finding = [{ listingId: "LIST-SHOP-001", code: "BATTERY_RUNTIME_DOCUMENTED_MISMATCH", severity: "warning", status: "documented_mismatch", sourceIds: ["LIST-SHOP-001", "SPEC-001"], explanationZh: "不一致", explanationEn: "Mismatch" }];
+    await db.query("select reloop_save_evidence_findings($1, $2::jsonb)", [caseId, JSON.stringify(finding)]);
+    await db.query("select reloop_save_evidence_findings($1, $2::jsonb)", [caseId, JSON.stringify(finding)]);
+    expect((await db.query("select id from findings where case_id = $1", [caseId])).rows).toHaveLength(1);
+    finding[0].sourceIds = ["invented"];
+    await expect(db.query("select reloop_save_evidence_findings($1, $2::jsonb)", [caseId, JSON.stringify(finding)])).rejects.toThrow(/invalid source/);
+  });
+  it("saves and updates tasks with audit history", async () => {
+    const task = { assignedRole: "qa", kind: "qa_investigation", title: "Investigate", description: "Check conditions", state: "open", sourceIds: ["SPEC-001"] };
+    const first = await db.query<{ result: { task: { id: string } } }>("select reloop_upsert_task($1, $2::jsonb) as result", [caseId, JSON.stringify(task)]);
+    await db.query("select reloop_upsert_task($1, $2::jsonb)", [caseId, JSON.stringify({ ...task, taskId: first.rows[0].result.task.id, state: "done" })]);
+    expect((await db.query("select id from audit_events where case_id = $1", [caseId])).rows).toHaveLength(2);
+    expect((await db.query<{ state: string }>("select state from tasks where id = $1", [first.rows[0].result.task.id])).rows[0].state).toBe("done");
+  });
+  it("saves a revision atomically and blocks stale or unvalidated approval", async () => {
+    await createArtifact();
+    const revision = { expectedVersion: 1, promptText: "Shorten", promptLocale: "en-US" };
+    const version = { locale: "en-US", languageStatus: "beta", content: { format: "support_reply", subject: "Updated", body: "Updated reply" }, sourceIds: ["SPEC-001"], validationStatus: "pending" };
+    await db.query("select reloop_save_revision($1, $2::jsonb, $3::jsonb, $4::jsonb)", [supportId, JSON.stringify(revision), JSON.stringify(version), "[]"]);
+    expect((await db.query("select id from artifact_versions where artifact_id = $1", [supportId])).rows).toHaveLength(2);
+    await expect(db.query("select reloop_review_artifact($1, $2::jsonb)", [supportId, JSON.stringify({ version: 2, decision: "approved", reviewerRole: "support", comment: "" })])).rejects.toThrow(/review blocked/);
+  });
+  it("reviews the exact checked version and creates an audit event", async () => {
+    await createArtifact();
+    await db.query("update artifact_versions set validation_status = 'checked' where artifact_id = $1", [supportId]);
+    await db.query("select reloop_review_artifact($1, $2::jsonb)", [supportId, JSON.stringify({ version: 1, decision: "approved", reviewerRole: "support", comment: "OK" })]);
+    expect((await db.query<{ review_status: string }>("select review_status from artifact_versions where artifact_id = $1", [supportId])).rows[0].review_status).toBe("approved");
+    expect((await db.query("select id from artifact_reviews where artifact_id = $1", [supportId])).rows).toHaveLength(1);
+    expect((await db.query("select id from audit_events where case_id = $1", [caseId])).rows).toHaveLength(1);
+  });
+  it("rejects stale revisions and rolls back invalid source writes", async () => {
+    await createArtifact();
+    const revision = { expectedVersion: 1, promptText: "Shorten", promptLocale: "en-US" };
+    const version = { locale: "en-US", languageStatus: "beta", content: { format: "support_reply", subject: "Updated", body: "Updated reply" }, sourceIds: ["SPEC-001"], validationStatus: "checked" };
+    await db.query("select reloop_save_revision($1, $2::jsonb, $3::jsonb, $4::jsonb)", [supportId, JSON.stringify(revision), JSON.stringify(version), "[]"]);
+    await db.exec("savepoint before_failure");
+    await expect(db.query("select reloop_save_revision($1, $2::jsonb, $3::jsonb, $4::jsonb)", [supportId, JSON.stringify(revision), JSON.stringify(version), "[]"])).rejects.toThrow(/stale version/);
+    await db.exec("rollback to savepoint before_failure");
+    await expect(db.query("select reloop_save_revision($1, $2::jsonb, $3::jsonb, $4::jsonb)", [supportId, JSON.stringify({ ...revision, expectedVersion: 2 }), JSON.stringify({ ...version, sourceIds: ["invented"] }), "[]"])).rejects.toThrow(/invalid source/);
+    await db.exec("rollback to savepoint before_failure");
+    expect((await db.query<{ latest_version: number }>("select latest_version from artifacts where id = $1", [supportId])).rows[0].latest_version).toBe(2);
+    expect((await db.query("select id from artifact_versions where artifact_id = $1", [supportId])).rows).toHaveLength(2);
+  });
+  it("denies anonymous execution of transactional operations", async () => {
+    await db.exec("set local role anon");
+    await expect(db.query("select reloop_upsert_task($1, '{}'::jsonb)", [caseId])).rejects.toThrow(/permission denied/i);
+  });
   it("keeps the generated SQL seed in sync with the typed fixture", () => {
     expect(seed).toBe(generateSeed(demoBundle));
   });

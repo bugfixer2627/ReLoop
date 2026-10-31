@@ -34,7 +34,7 @@ npm ci
 
 ## What remains for feature branches
 
-Case list/create/load routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. No login/session UI is implemented yet. **Model extraction/generation, rule checking, microphone/transcription, revisions, approvals, tasks and audit orchestration are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
+Case list/create/load, evidence-only analysis, task and review routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. Apply the new database migration before using them. No login/session UI is implemented yet. **AI generation, legal/platform rule checks, transcription and revision generation are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**; revision persistence is available for future integration. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
 
 Chinese/English generation and voice are P0 targets, not yet tested capabilities. German is P1, Arabic P2. Amazon DE must retain its context and use an explicitly labeled English internal brief if German generation is unavailable. Do not mark languages ready until real flows pass acceptance tests.
 
