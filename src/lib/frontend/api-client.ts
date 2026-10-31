@@ -11,6 +11,7 @@ import type {
   CaseBundle, InputLocale, Platform,
 } from '@/lib/contracts';
 import type { z } from 'zod';
+import { platformLabel } from '@/lib/config/platforms';
 
 type ResponseData<S extends z.ZodType> = Extract<z.infer<S>, { ok: true }> extends { data: infer Data } ? Data : never;
 
@@ -125,8 +126,6 @@ export function isAccessDenied(error: unknown) {
   return error instanceof ApiRequestError && ['UNAUTHORIZED', 'NOT_CONFIGURED'].includes(error.code);
 }
 
-export function casePlatformLabel(platform: Platform) {
-  return {
-    shopify_us: 'Shopify US', amazon_de: 'Amazon Germany', alibaba_intl: 'Alibaba International',
-  }[platform];
+export function casePlatformLabel(platform: Platform, locale = 'en-US') {
+  return platformLabel(platform, locale);
 }

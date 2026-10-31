@@ -67,6 +67,26 @@ Each entry specifies affected UI/API, behavior, verified cause, change owner, da
 
 ## Historical Phase 1 audit and proposals
 
+## Phase 2B frontend integration — 1 November 2026
+
+Implemented on `codex/phase-2b-ui-fixes`; no backend, database, authentication, or API route changes were made.
+
+| Area | Current frontend behavior | Contract / dependency | Status / owner |
+|---|---|---|---|
+| Case navigation | Investigation and Fix & Approve links use the current case ID; when none is selected they open `/dashboard?view=investigation|fix` as an explicit saved-case picker. Invalid or missing case IDs show retry plus case-selection recovery. | Existing `GET /api/cases` and `GET /api/cases/:id`; UUID validation is client-side recovery only. | Implemented and fixture-verified; frontend |
+| Saved product association | Saved case ID, product ID, SKU and product name are displayed read-only. Editing a new Inbox submission is explained as creating another case. | Existing case bundle `case.productId`, `case.sku`, and `product.name`; no case-update API. | Implemented; frontend |
+| Feedback language | Interface locale, customer feedback locale, and merchant instruction/voice locale are separate. Source text is retained when interface language changes. | Existing `feedbackLocale` and `merchantLocale` request fields; `/api/transcribe` accepts the selected instruction locale. | Implemented; frontend |
+| Marketplace options | Inbox options come from `src/lib/config/platforms.ts`, with IDs unchanged: `shopify_us`, `amazon_de`, `alibaba_intl`. Labels are localized; they do not imply account connections. | Existing `platformSchema`, case-create contract, and listing platform enum. | Implemented; no endpoint required for fixed MVP whitelist |
+| Product Overview image / description | Not shown. Current `Product` contract exposes no image URL or description and the Inbox has no reliable SKU lookup before case creation. | A future read-only product lookup would need an approved contract and source of truth. | Blocked / proposal; backend owner |
+
+### Product context proposal (not implemented)
+
+If product context becomes necessary, add a typed read-only lookup using the existing synthetic product catalogue rather than a new marketplace table. The preferred contract is `GET /api/products/:sku`, returning the existing product identity plus explicitly sourced optional `description` and `imageUrl`; a missing image must render a neutral missing-image state, and lookup loading/error states must remain honest. The backend owner must confirm whether those fields belong in the product table or a separate approved source, define URL/storage policy and authorization, and provide fixtures for found, missing, unavailable, and invalid-SKU responses. The UI should not show a Product Overview card until that contract exists.
+
+### Phase 2B verification boundary
+
+The browser evidence under `.local-reviews/integration-evidence/phase2b/` uses explicit intercepted synthetic responses. It verifies client navigation, recovery, localization, input preservation, and responsive layout; it does not claim live database persistence, AI generation, transcription, or product lookup success.
+
 The following snapshot predates backend PR #4. References to main/remote branches and unverified work describe that earlier point; current verified outcomes and issue statuses are above. Proposed catalogue/product APIs remain proposals, not implemented endpoints.
 
 Audit: 1 November 2026. This records code inspection, not proof of live provider/database execution.

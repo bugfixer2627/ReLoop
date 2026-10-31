@@ -389,7 +389,47 @@
 .reloop-ui #workspace-main:focus-visible { outline:2px solid var(--lime); outline-offset:3px; }
 .reloop-ui .sidebar-mobile-actions { display:none; }
 .reloop-ui .sidebar-action:focus-visible,.reloop-ui .side-link:focus-visible { outline:2px solid var(--lime); outline-offset:2px; }
+.reloop-ui .workspace-sign-out { padding:8px 12px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--forest); white-space:nowrap; font-size:12px; font-weight:600; }
+.reloop-ui .workspace-sign-out:hover { background:var(--canvas); border-color:#c4d2c8; }
+.reloop-ui .case-back-link { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; margin-top:18px; font-size:13px; }
+.reloop-ui .case-recovery-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.reloop-ui .saved-case-identity { margin:16px 0; padding:15px 0; border-block:1px solid var(--border); }
+.reloop-ui .saved-record-note { margin:0 0 10px; color:var(--muted); font-size:12px; line-height:1.7; }
+.reloop-ui .saved-case-identity dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 22px; margin:0; }
+.reloop-ui .saved-case-identity dt { color:var(--muted); font-size:12px; }
+.reloop-ui .saved-case-identity dd { margin:3px 0 0; font-size:13px; overflow-wrap:anywhere; }
+.reloop-ui .feedback-form .feedback-section { min-width:0; margin:0; padding:0; border:0; }
+.reloop-ui .feedback-section legend { padding:0; margin-bottom:16px; color:var(--forest); font-size:16px; font-weight:650; }
+.reloop-ui .feedback-context-grid,.reloop-ui .feedback-writing-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+.reloop-ui .feedback-writing-grid { margin-top:22px; padding-top:22px; border-top:1px solid var(--border); }
+.reloop-ui .feedback-form .field { gap:7px; min-width:0; }
+.reloop-ui .feedback-form .field+.field { margin-top:18px; }
+.reloop-ui .feedback-form .feedback-context-grid>.field+.field { margin-top:0; }
+.reloop-ui .feedback-output-note { margin-top:12px; }
+.reloop-ui .feedback-form .field label { margin:0; font-size:13px; font-weight:600; }
+.reloop-ui .feedback-form .input,.reloop-ui .feedback-form .select,.reloop-ui .feedback-form .textarea { font-size:14px; }
+.reloop-ui .feedback-helper { margin:0; font-size:12px; line-height:1.7; color:#5b6e62; }
+.reloop-ui .feedback-voice { margin-top:18px; }
+.reloop-ui .feedback-voice h3 { margin:0; font-size:13px; font-weight:600; }
+.reloop-ui .feedback-voice .voice-description p { font-size:12px; line-height:1.7; }
+.reloop-ui .feedback-actions { margin-top:22px; padding-top:20px; border-top:1px solid var(--border); }
+.reloop-ui .feedback-submit-row { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+.reloop-ui .feedback-submit-row p { max-width:65ch; }
+.reloop-ui .feedback-submit-row button { flex:none; min-height:44px; }
+.reloop-ui .feedback-form .field-error { margin:0; color:#a23d38; font-size:12px; }
+.reloop-ui .feedback-form [aria-invalid="true"] { border-color:#a23d38; }
+.reloop-ui .saved-submission .case-back-link { margin-top:0; }
+@media (max-width:1050px) {
+  .reloop-ui .feedback-page .page-heading { display:block; }
+  .reloop-ui .feedback-page .heading-actions { margin-top:14px; }
+  .reloop-ui .app-shell .topbar { height:auto; grid-template-columns:minmax(0,1fr) auto; gap:12px; padding:16px 22px; }
+  .reloop-ui .app-shell .navbar-search { grid-column:1 / -1; grid-row:2; max-width:none; }
+  .reloop-ui .feedback-context-grid,.reloop-ui .feedback-writing-grid { grid-template-columns:minmax(0,1fr); gap:22px; }
+  .reloop-ui .feedback-submit-row { align-items:flex-start; flex-direction:column; gap:14px; }
+}
 @media (max-width:760px) {
+  .reloop-ui .workspace-sign-out { display:none; }
+  .reloop-ui .saved-case-identity dl { grid-template-columns:minmax(0,1fr); }
   .reloop-ui.sidebar-collapsed .sidebar { width:280px; padding:22px 15px; }
   .reloop-ui.sidebar-collapsed .main-area { width:100%; margin:0; }
   .reloop-ui.sidebar-collapsed .sidebar .brand { width:auto; overflow:visible; }

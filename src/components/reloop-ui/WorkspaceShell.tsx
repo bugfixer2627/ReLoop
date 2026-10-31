@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { useWorkspace } from './WorkspaceProviders';
 import { Brand } from './Brand';
 import { Icon } from './icons';
+import { rememberCase, useSelectedCase } from './useSelectedCase';
+import { caseHref, navigationCaseId, type CaseDestination } from '@/lib/frontend/case-navigation';
 
 const labels = {
   'en-US': {
@@ -13,7 +15,7 @@ const labels = {
     fix: 'Fix & approve', menu: 'Menu', quickCreate: 'Create', newCase: 'New customer case',
     openInvestigation: 'Open current investigation', openWorkspace: 'Open fix workspace',
     search: 'Search cases', language: 'Switch interface language', closeNavigation: 'Close navigation', skip: 'Skip to main content', unknown: 'Unknown', workspace: 'ReLoop workspace',
-    access: 'Protected demo workspace', signOut: 'Leave workspace', signInTitle: 'Workspace access required',
+    access: 'Protected demo workspace', signOut: 'Sign out', signInTitle: 'Workspace access required',
     signInCopy: 'Enter the shared demo access token to load saved cases.', signInAction: 'Continue to access',
   },
   'zh-CN': {
@@ -21,15 +23,16 @@ const labels = {
     fix: '修订与审核', menu: '菜单', quickCreate: '创建', newCase: '新建客户案例',
     openInvestigation: '打开当前核验', openWorkspace: '打开修订工作区',
     search: '搜索案例', language: '切换界面语言', closeNavigation: '关闭导航', skip: '跳转到主要内容', unknown: '未知', workspace: 'ReLoop 工作台',
-    access: '受保护的演示工作区', signOut: '离开工作区', signInTitle: '需要工作区访问权限',
+    access: '受保护的演示工作区', signOut: '退出工作区', signInTitle: '需要工作区访问权限',
     signInCopy: '输入共享演示访问令牌以读取已保存案例。', signInAction: '前往访问页面',
   },
 } as const;
 
-export function WorkspaceShell({ children, title, searchQuery = '' }: { children: ReactNode; title: string; searchQuery?: string }) {
+export function WorkspaceShell({ children, title, searchQuery = '', selectionTarget }: { children: ReactNode; title: string; searchQuery?: string; selectionTarget?: CaseDestination }) {
   const pathname = usePathname();
   const router = useRouter();
   const { accessToken, clearAccessToken, locale, toggleLocale } = useWorkspace();
+  const selectedCaseId = useSelectedCase();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -37,14 +40,15 @@ export function WorkspaceShell({ children, title, searchQuery = '' }: { children
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasMobileOpen = useRef(false);
   const text = labels[locale];
-  const caseId = pathname.match(/^\/cases\/([^/]+)/)?.[1];
+  const routeCaseId = pathname.match(/^\/cases\/([^/]+)/)?.[1];
+  const caseId = navigationCaseId(pathname, selectedCaseId);
   const isFix = pathname.endsWith('/fix');
   const isDashboard = pathname === '/dashboard';
   const nav = [
-    { href: '/dashboard', label: text.overview, icon: 'grid', active: pathname === '/dashboard' },
+    { href: '/dashboard', label: text.overview, icon: 'grid', active: pathname === '/dashboard' && !selectionTarget },
     { href: '/feedback', label: text.feedback, icon: 'inbox', active: pathname === '/feedback' },
-    { href: caseId && !isFix ? `/cases/${caseId}` : '/dashboard', label: text.investigation, icon: 'search', active: Boolean(caseId && !isFix) },
-    { href: caseId ? `/cases/${caseId}/fix` : '/dashboard', label: text.fix, icon: 'shield', active: Boolean(caseId && isFix) },
+    { href: caseHref(caseId, 'investigation'), label: text.investigation, icon: 'search', active: selectionTarget === 'investigation' || Boolean(routeCaseId && !isFix) },
+    { href: caseHref(caseId, 'fix'), label: text.fix, icon: 'shield', active: selectionTarget === 'fix' || Boolean(routeCaseId && isFix) },
   ];
 
   useEffect(() => {
@@ -82,6 +86,7 @@ export function WorkspaceShell({ children, title, searchQuery = '' }: { children
 
   function signOut() {
     setMobileOpen(false);
+    rememberCase(null);
     clearAccessToken();
     router.replace('/login');
   }
@@ -138,14 +143,12 @@ export function WorkspaceShell({ children, title, searchQuery = '' }: { children
                 {quickOpen && <div className="quick-menu" role="menu"><Link role="menuitem" href="/feedback" onClick={() => setQuickOpen(false)}>{text.newCase}</Link>{caseId && <Link role="menuitem" href={isFix ? `/cases/${caseId}` : `/cases/${caseId}/fix`} onClick={() => setQuickOpen(false)}>{isFix ? text.openInvestigation : text.openWorkspace}</Link>}</div>}
               </div>
             </div>
-            <form key={isDashboard ? searchQuery : 'no-query'} className={`navbar-search ${isDashboard ? 'dashboard-search' : ''}`} role="search" onSubmit={(event) => { event.preventDefault(); router.push(`/dashboard?q=${encodeURIComponent(new FormData(event.currentTarget).get('q')?.toString() ?? '')}`); }}>
+            <form key={isDashboard ? searchQuery : 'no-query'} className={`navbar-search ${isDashboard ? 'dashboard-search' : ''}`} role="search" onSubmit={(event) => { event.preventDefault(); router.push(`/dashboard?q=${encodeURIComponent(new FormData(event.currentTarget).get('q')?.toString() ?? '')}${selectionTarget ? `&view=${selectionTarget}` : ''}`); }}>
               <input name="q" autoComplete="off" defaultValue={isDashboard ? searchQuery : ''} placeholder={`${text.search}…`} aria-label={text.search}/><button className="icon-btn" aria-label={text.search} type="submit"><Icon name="search" size={16}/></button>
             </form>
             <div className="topbar-tools">
               <button className="language" type="button" onClick={toggleLocale} aria-label={text.language}>{locale === 'en-US' ? '中文' : 'EN'}</button>
-              <button className="profile-btn" type="button" onClick={signOut} title={text.signOut}>
-                <span className="avatar" aria-hidden="true">R</span><span className="profile-label">{text.workspace}</span><span aria-hidden="true">⌄</span>
-              </button>
+              <button className="workspace-sign-out" type="button" onClick={signOut}>{text.signOut}</button>
             </div>
           </header>
           <div className="workspace-context"><span>{title}</span><span className="demo-indicator"><i/>{text.access}</span></div>
