@@ -1,0 +1,42 @@
+{
+  "realHttp": true,
+  "interception": false,
+  "temporaryTokenNotPersisted": true,
+  "events": [
+    {
+      "name": "real bearer login and case list",
+      "status": "PASS"
+    },
+    {
+      "name": "real analysis 503 recovery",
+      "status": "PASS",
+      "caseId": "435d0b00-6fa0-427a-bb63-8a5bc45af1b6",
+      "caseCreates": 1,
+      "analysisAttempts": 2
+    },
+    {
+      "name": "real saved case navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "real persisted snapshot platform tabs",
+      "status": "PASS",
+      "tabs": [
+        "Shopify US",
+        "Amazon Germany",
+        "Alibaba International"
+      ]
+    },
+    {
+      "name": "Chinese interface",
+      "status": "PASS"
+    },
+    {
+      "name": "authenticated mobile overflow",
+      "status": "PASS",
+      "width": 390,
+      "documentWidth": 390
+    }
+  ],
+  "errors": []
+}

@@ -1,5 +1,74 @@
 # UI and backend integration handoff
 
+## Combined application update — 1 November 2026
+
+**This section supersedes the historical Phase 1 audit below.** Tested merged commit `a655970` on `codex/integration-verification`: backend PR #4 merged into landing branch, containing `bcd124b` and backend `2e1e4f5`. Main remains `08632bf`; PR #3 remains open. AI branch `4c0f8fe` is not merged. No unresolved merge files, duplicate route files or current migration collision exist.
+
+See `INTEGRATION_VERIFICATION.md` for exact commands/results and `integration-evidence/` for sanitized real HTTP/browser observations. Passing SQL/unit/build checks does not prove deployed Supabase or AI behavior.
+
+| Connection | Combined code | Actual integration result |
+|---|---|---|
+| Case list/create/detail | Implemented, bearer-authenticated | Real 200 list/detail, 201 create then reload same input/ID, unknown SKU 404 |
+| Login | Current bearer consumer matches backend | Real browser login succeeds with temporary in-memory test token |
+| Analyze | Deterministic stored-listing/evidence comparison, not AI | Real 503: required migration 003 RPC absent in configured database |
+| Tasks + audit | Implemented handler/RPC contract | Real 503: operation function absent |
+| Human review | Implemented handler with role/current-version rules in SQL | Missing-artifact test expected 404 but got 503: RPC absent; positive live review not verified |
+| Support / listing repair / HTTP revise / transcribe | Four 501 routes | Real HTTP 501, no fabricated draft/transcript |
+| Health | Current literal not_implemented contract | DB reachable with corrected local config; frontend smoke compatible |
+| SQL review/version invariants | Existing migration code | Verified in disposable PGlite only, not deployed DB |
+| Public landing | No API dependency | SSR, no-JS and public navigation work independently of backend failures |
+
+### Current issue register
+
+Each entry specifies affected UI/API, behavior, verified cause, change owner, database implications, status and evidence.
+
+**CFG-01 — Supabase SDK URL.** Login/dashboard/Inbox and all case routes through `src/lib/db/client.ts:14` failed because `.env.local` configured `/rest/v1/`; the SDK generated `/rest/v1/rest/v1/products`. Expected: HTTPS project origin, with SDK supplying REST path. Corrected only that ignored local value; credentials preserved and never printed. Owner: local/backend configuration. Database changes: none. **Fixed and verified:** real case read/create/reload and browser access succeed with the correct origin.
+
+**CFG-02 — Node certificate trust.** Supabase REST consumers failed with `UNABLE_TO_VERIFY_LEAF_SIGNATURE` while SQL SELECT 1 connected. Raw REST returned 200 with `NODE_USE_SYSTEM_CA=1`. Expected: verified HTTPS using trusted CA store. Applied that option to the test server process only; TLS verification was not bypassed. Owner: local/deployment configuration; database changes: none. **Fixed and verified for test launch**; ordinary launches on this machine need the same startup setting. Loading it after Node starts is not equivalent.
+
+**CFG-03 — Missing demo token.** Login/protected routes normally return 503 NOT_CONFIGURED because no `DEMO_ACCESS_TOKEN` is configured. Expected: configured bearer token, no new session architecture. Generated temporary random 32-byte token in isolated server memory for testing; not stored in config, reports or browser storage. Owner: backend/config; database changes: none. **Blocked by configuration for ordinary login; supported auth verified** with temporary token (401 missing token, 403 foreign origin, real browser success).
+
+**DB-01 — Operation migration not deployed.** Inbox analysis and Fix & Approve task/review routes returned 503, rather than saved findings/task+audit or missing-artifact 404. Read-only catalogue inspection found no `reloop_save_evidence_findings`, `reloop_upsert_task`, `reloop_review_artifact` or `reloop_save_revision`. Migration ledger contains only 001 foundation and 002 SKU. Expected: deployed current operation functions. Owner: Person 3 obtains approval, reviews/applies existing `202610310003_case_operations.sql`, checks RPC visibility/cache, then reruns live tests. Database implication: deployment of existing migration, no new design. **Backend teammate required.** No db:apply, seed, reset or schema write was performed. Preserve SQL semantics: unresolved checks block approval, but changes-requested/reject remain allowed; wrong role/stale version must fail. These semantics pass PGlite tests, not yet deployed HTTP verification.
+
+**FE-01 — Save/analysis retry.** `feedback/page.tsx:25,68`, POST cases/analyze: successful save then 503 had no actionable link; retry recreated a case. Expected same ID for unchanged normalized input and recovery link for every analysis failure. Fix: retain returned ID plus input fingerprint, retry analysis only, preserve new-case behavior for changed submitted input; remove stale analysis “501” label in favor of accurate evidence-only text. Owner: Person 1; no API/DB changes. **Fixed and verified against real API/browser:** 1 case POST, 2 analysis attempts, same saved ID and working recovery link. Lost POST responses still need separately agreed server idempotency for guaranteed deduplication.
+
+**FE-02 — Search query.** `dashboard-client.tsx:21` froze initial `q` prop. Expected results to follow updated URL. Derives query from current props now. Owner: frontend; API remains GET cases; no DB change. **Fixed and verified with explicit browser HTTP fixtures** (Alpha→Beta); not proof of persistence.
+
+**FE-03 — Loading/error identity.** `useCaseBundle.ts:13`, GET case: old bundle identity could force perpetual loading after another case failed. Track settled request identity independently. Owner: frontend; no DB/API change. **Fixed; route-level error display verified with fixture 404.** Same-mounted A→B transition is code-reviewed and not claimed as separately live-tested.
+
+**FE-04 — Artifact state and citations.** `fix-approve-client.tsx:95,102` and `ArtifactWorkspace.tsx:103`: unkeyed reuse carried prompt/version state across platforms and citations always used latest version. Expected artifact-local state and displayed-version sources. Added artifact-ID keys and current-version citations. Owner: frontend; existing bundle/API, no DB change. **Fixed and verified with browser fixtures**; those synthetic artifacts were never persisted or captured as real integration screenshots.
+
+**AI-01 — Unfinished model workflows.** Support/repair/revise/transcribe are HTTP 501; evidence Analyze is not LLM extraction/summary or market-law/platform-rule validation. Owner: Person 2 coordinates integration of `4c0f8fe`; Person 3 approves persistence. Database implications: future AI `003_workflow_writes` overlaps merged `003_case_operations`, with `004_workflow_revalidation` also requiring coordinated ordering. **Backend teammate required;** no live generation, positive artifact review or two generated revisions claimed.
+
+**FUT-01 — Future AI contracts.** Current bearer auth and health match frontend. Unmerged STT is cookie-only, unmerged health has configured/not_configured values, and unmerged Review blocks all decisions on unresolved checks rather than only approval. Affected: Login/VoiceInput/ArtifactWorkspace/smoke; `/transcribe`, `/review`, `/health`; `src/lib/server/access.ts`. Expected: owner-agreed access/health contracts and preservation of merged role/version/decision protections. Owner: Person 2+3; Person 1 adjusts consumer only after agreement. Database: canonical write/review RPCs and migration ordering. **Backend teammate required before AI merge**, not a current merged incompatibility.
+
+### Hardcoding and read-only audit (no broad edits)
+
+| Location | Classification / recommended source | Editability / later review |
+|---|---|---|
+| Feedback marketplace options, `platforms.ts:3`, `api-client.ts` labels | Fixed IDs duplicated across shared enum/config/DB. Proposed backend-owned GET platforms can expose existing config; no new table needed for MVP | Selector chooses supported ID; adding arbitrary platform IDs requires contract agreement |
+| `fix-approve-client.tsx:98` “3 platform snapshots” | Literal assumes count; later derive from bundle listings, separately from configured three contexts | Display only; not changed in this audit |
+| Dashboard count cards | Actual returned cases, but failed initial load can display zero | Later display unknown/error; no invented statistics |
+| Inbox synthetic example | Explicit seed input; acceptable static fixture, never fallback for API failure | Editable before save; saved original remains original |
+| Investigation source evidence/listings/provenance | Persisted records via case bundle | Read-only; source protection belongs to DB model |
+| ArtifactWorkspace saved IDs/content/timestamps/history | Persisted immutable version records; selected citations fixed | Read-only saved content; commands create new versions |
+| Artifact reviewer Support/Marketing role | Demo business-role selection matching current SQL, not user-authentication permission evidence | Do not add broader role switching without product/backend review |
+| Task state:'open', assigned QA/Compliance | Acceptable create-command defaults, not stored-state fabrication | Existing task status comes from bundle; updates need approved command/authorization |
+| Language targets / version badges | Static development targets are not provider readiness | Persisted languageStatus and Amazon internalBrief must control capability claims; later audit |
+| Audit/revision history, case IDs | Server-generated persisted records | Read-only; no client success/event fabrication |
+| Landing copy/assets/labels/tokens | Static marketing and layout content | No endpoint or DB dependency |
+
+### Immediate team actions
+
+1. Configure a real demo access token and project-origin Supabase URL; use system trust at Node startup where needed.
+2. Person 3 obtains schema deployment approval and applies existing operation migration to the test DB, then reruns real HTTP tests without resetting data.
+3. Person 2+3 reconcile AI access/review/health/write implementations and migration order before AI merge.
+4. Run real same-case Chinese/English generation, v1→v2→v3, approval/task/audit reload and STT confirmation once available.
+
+## Historical Phase 1 audit and proposals
+
+The following snapshot predates backend PR #4. References to main/remote branches and unverified work describe that earlier point; current verified outcomes and issue statuses are above. Proposed catalogue/product APIs remain proposals, not implemented endpoints.
+
 Audit: 1 November 2026. This records code inspection, not proof of live provider/database execution.
 
 ## Scope and branch snapshot
