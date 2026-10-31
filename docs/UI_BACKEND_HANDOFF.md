@@ -4,7 +4,7 @@
 
 **This section supersedes the historical Phase 1 audit below.** Tested merged commit `a655970` on `codex/integration-verification`: backend PR #4 merged into landing branch, containing `bcd124b` and backend `2e1e4f5`. Main remains `08632bf`; PR #3 remains open. AI branch `4c0f8fe` is not merged. No unresolved merge files, duplicate route files or current migration collision exist.
 
-See `INTEGRATION_VERIFICATION.md` for exact commands/results and `integration-evidence/` for sanitized real HTTP/browser observations. Passing SQL/unit/build checks does not prove deployed Supabase or AI behavior.
+See `INTEGRATION_VERIFICATION.md` for shared commands/results. Personal screenshots and raw HTTP/browser observations are kept locally under `.local-reviews/integration-evidence/` and are not committed. Passing SQL/unit/build checks does not prove deployed Supabase or AI behavior.
 
 | Connection | Combined code | Actual integration result |
 |---|---|---|

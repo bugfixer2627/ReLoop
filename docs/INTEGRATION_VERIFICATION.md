@@ -1,6 +1,6 @@
 # Combined frontend/backend verification
 
-1 November 2026 (Asia/Shanghai). Tested merged `a655970` on new `codex/integration-verification`. Evidence is in `docs/integration-evidence/`. Passing build/PGlite tests does not prove deployed Supabase or AI behavior.
+1 November 2026 (Asia/Shanghai). Tested merged `a655970` on `codex/integration-verification`. Personal screenshots, recordings, and raw verification output remain local under `.local-reviews/integration-evidence/` and are excluded from Git. This tracked report preserves the sanitized conclusions/reproduction. Passing build/PGlite tests does not prove deployed Supabase or AI behavior.
 
 ## Git integration
 
@@ -69,7 +69,7 @@ No finding, task, audit or review success is claimed from this live run. Positiv
 | scripts/smoke.mjs | Corrected log wording: Review is implemented; only generation/revision/STT remain 501 | Smoke behavior/assertions unchanged; syntax/lint checked |
 | landing.css | Finite ambient/artwork settle, preview reveal and button feedback | Browser motion/reduced-motion captures |
 
-No production backend handler, schema, migration, auth, shared contract, package dependency or after-login visual layout changed. Broader hardcoding/editability review is in UI_BACKEND_HANDOFF.md; original records, IDs, audit, evidence and saved versions remain read-only.
+No production backend handler, schema, migration, auth, shared contract, package dependency or after-login visual layout changed. Broader hardcoding/editability review is in `UI_BACKEND_HANDOFF.md`; original records, IDs, audit, evidence and saved versions remain read-only.
 
 ## Commands and reproduction
 
@@ -97,7 +97,7 @@ $env:RELOOP_INTEGRATION_WRITES='1' # only after synthetic-write authorization
 npx vitest run tests/integration.live.test.ts
 ```
 
-Default CI skips opt-in live tests. No test loads remote credentials automatically or applies migrations. Temporary browser helpers ran from ignored test-results/; their evidence explicitly separates real HTTP from fixture interception. No runtime dependency was added.
+Default CI skips opt-in live tests. No test loads remote credentials automatically or applies migrations. Temporary browser helpers are retained locally under `.local-reviews/test-tools/`; personal evidence explicitly separates real HTTP from fixture interception. No runtime dependency was added.
 
 ## Remaining work
 

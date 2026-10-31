@@ -12,4 +12,7 @@ test-results/
 playwright-report/
 .supabase/
 prompt-runs/
+/.local-reviews/
+/docs/integration-evidence/
+/docs/ui-previews/
 /AGENTS.md

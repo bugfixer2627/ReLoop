@@ -43,7 +43,7 @@ async function verify(test: string, operation: () => Promise<void>) {
   } catch {
     // Assertion/provider bodies may contain operational data. Do not print them.
     observations.push({ test, status: 'FAIL', detail: 'HTTP verification failed; inspect the recorded statuses and server diagnostics without exposing credentials.' });
-    throw new Error(`${test} failed. See docs/integration-evidence/live-http.json for sanitized HTTP observations.`);
+    throw new Error(`${test} failed. See local .local-reviews/integration-evidence/live-http.json for sanitized HTTP observations.`);
   }
 }
 
@@ -109,7 +109,7 @@ live('opt-in real application HTTP integration', () => {
   });
 
   afterAll(async () => {
-    await mkdir(new URL('../docs/integration-evidence/', import.meta.url), { recursive: true });
+    await mkdir(new URL('../.local-reviews/integration-evidence/', import.meta.url), { recursive: true });
     const report = {
       recordedAt: new Date().toISOString(),
       environment: 'Real HTTP against the explicitly configured loopback application server; persistence is its configured service.',
@@ -125,7 +125,7 @@ live('opt-in real application HTTP integration', () => {
         'Browser voice permissions and authenticated UI interaction require separate browser verification.',
       ],
     };
-    await writeFile(new URL('../docs/integration-evidence/live-http.json', import.meta.url), `${JSON.stringify(report, null, 2)}\n`);
+    await writeFile(new URL('../.local-reviews/integration-evidence/live-http.json', import.meta.url), `${JSON.stringify(report, null, 2)}\n`);
   });
 
   it('reports health and enforces authentication and request validation', async () => {
