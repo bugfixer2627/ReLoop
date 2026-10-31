@@ -1,0 +1,212 @@
+{
+  "case": {
+    "id": "00000000-0000-4000-8000-000000000101",
+    "productId": "00000000-0000-4000-8000-000000000001",
+    "sku": "RL-LAMP-01",
+    "channel": "shopify_us",
+    "feedbackText": "My lamp works for only about 2 hours.",
+    "feedbackLocale": "en-US",
+    "merchantInstruction": "请分析客户投诉，核对产品参数，检查三个平台的商品描述，并给出处理建议。",
+    "merchantLocale": "zh-CN",
+    "status": "open",
+    "synthetic": true,
+    "createdAt": "2026-10-31T00:00:00Z"
+  },
+  "product": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "sku": "RL-LAMP-01",
+    "name": "Rechargeable desk lamp / 充电台灯",
+    "sourceVersion": "demo-v1",
+    "synthetic": true,
+    "attributes": {
+      "merchant": "Fictional Ningbo exporter",
+      "moq": "100 units",
+      "leadTime": "15 business days"
+    }
+  },
+  "evidence": [
+    {
+      "id": "SPEC-001",
+      "productId": "00000000-0000-4000-8000-000000000001",
+      "kind": "specification",
+      "content": "DEMO / FICTIONAL: Maximum 4 hours at maximum brightness, fully charged, 23°C, protocol DEMO-RUNTIME-v1. MOQ 100 units; lead time 15 business days. These are fictional seed values, not actual supplier promises.",
+      "numericClaim": {
+        "metric": "battery_runtime",
+        "value": 4,
+        "unit": "hours",
+        "qualifier": "maximum",
+        "conditions": {
+          "brightness": "maximum brightness",
+          "startingCharge": "fully charged",
+          "ambientTemperature": "23°C",
+          "protocol": "DEMO-RUNTIME-v1 (fictional test)"
+        }
+      },
+      "testConditions": {
+        "brightness": "maximum brightness",
+        "startingCharge": "fully charged",
+        "ambientTemperature": "23°C",
+        "protocol": "DEMO-RUNTIME-v1 (fictional test)"
+      },
+      "sourceVersion": "demo-v1",
+      "provenance": "Synthetic merchant specification; not a real test report.",
+      "verificationStatus": "documented",
+      "synthetic": true
+    },
+    {
+      "id": "POLICY-MERCHANT-001",
+      "productId": "00000000-0000-4000-8000-000000000001",
+      "kind": "support_policy",
+      "content": "DEMO policy: Acknowledge the issue; ask for order number, brightness setting, charge state and a short description of use. Support may not promise refunds, replacements, warranties or shipping without separate authorization.",
+      "numericClaim": null,
+      "testConditions": {},
+      "sourceVersion": "demo-v1",
+      "provenance": "Synthetic merchant support policy.",
+      "verificationStatus": "documented",
+      "synthetic": true
+    }
+  ],
+  "listings": [
+    {
+      "id": "LIST-SHOP-001",
+      "productId": "00000000-0000-4000-8000-000000000001",
+      "platform": "shopify_us",
+      "market": "US",
+      "locale": "en-US",
+      "segment": "b2c",
+      "fields": {
+        "title": "Rechargeable desk lamp",
+        "description": "Up to 12 hours battery life at maximum brightness, fully charged, 23°C (fictional DEMO-RUNTIME-v1 conditions)."
+      },
+      "numericClaim": {
+        "metric": "battery_runtime",
+        "value": 12,
+        "unit": "hours",
+        "qualifier": "up_to",
+        "conditions": {
+          "brightness": "maximum brightness",
+          "startingCharge": "fully charged",
+          "ambientTemperature": "23°C",
+          "protocol": "DEMO-RUNTIME-v1 (fictional test)"
+        }
+      },
+      "snapshotVersion": "demo-v1",
+      "synthetic": true
+    },
+    {
+      "id": "LIST-AMZ-001",
+      "productId": "00000000-0000-4000-8000-000000000001",
+      "platform": "amazon_de",
+      "market": "DE",
+      "locale": "de-DE",
+      "segment": "b2c",
+      "fields": {
+        "title": "Wiederaufladbare Schreibtischlampe",
+        "bullets": [
+          "Bis zu 12 Stunden Akkulaufzeit"
+        ],
+        "description": "DEMO / FICTIONAL snapshot. Maximum brightness, full charge, 23°C; DEMO-RUNTIME-v1."
+      },
+      "numericClaim": {
+        "metric": "battery_runtime",
+        "value": 12,
+        "unit": "hours",
+        "qualifier": "up_to",
+        "conditions": {
+          "brightness": "maximum brightness",
+          "startingCharge": "fully charged",
+          "ambientTemperature": "23°C",
+          "protocol": "DEMO-RUNTIME-v1 (fictional test)"
+        }
+      },
+      "snapshotVersion": "demo-v1",
+      "synthetic": true
+    },
+    {
+      "id": "LIST-ALI-001",
+      "productId": "00000000-0000-4000-8000-000000000001",
+      "platform": "alibaba_intl",
+      "market": "global_b2b",
+      "locale": "en-US",
+      "segment": "b2b",
+      "fields": {
+        "title": "Rechargeable desk lamp — 12h runtime",
+        "specifications": {
+          "runtime": "12h at maximum brightness, full charge, 23°C; fictional DEMO-RUNTIME-v1"
+        },
+        "moq": "100 units",
+        "leadTime": "15 business days"
+      },
+      "numericClaim": {
+        "metric": "battery_runtime",
+        "value": 12,
+        "unit": "hours",
+        "qualifier": "up_to",
+        "conditions": {
+          "brightness": "maximum brightness",
+          "startingCharge": "fully charged",
+          "ambientTemperature": "23°C",
+          "protocol": "DEMO-RUNTIME-v1 (fictional test)"
+        }
+      },
+      "snapshotVersion": "demo-v1",
+      "synthetic": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "LAW-US-FTC-001",
+      "category": "market_law",
+      "market": "US",
+      "platform": "shopify_us",
+      "segment": "b2c",
+      "sourceUrl": "https://www.ftc.gov/legal-library/browse/ftc-policy-statement-regarding-advertising-substantiation",
+      "excerpt": null,
+      "checkedAt": null,
+      "applicability": "Candidate reference for US objective advertising claims; Person 3 must verify current scope and capture the exact excerpt.",
+      "status": "needs_rule_verification"
+    },
+    {
+      "id": "LAW-EU-UCPD-001",
+      "category": "market_law",
+      "market": "DE",
+      "platform": "amazon_de",
+      "segment": "b2c",
+      "sourceUrl": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32005L0029",
+      "excerpt": null,
+      "checkedAt": null,
+      "applicability": "Candidate EU/German B2C reference; verify Article 6, current text and German applicability. Do not apply to Alibaba B2B automatically.",
+      "status": "needs_rule_verification"
+    },
+    {
+      "id": "PLAT-ALI-001",
+      "category": "platform_rule",
+      "market": "global_b2b",
+      "platform": "alibaba_intl",
+      "segment": "b2b",
+      "sourceUrl": "https://terms.alicdn.com/legal-agreement/terms/suit_bu1_b2b/suit_bu1_b2b202111301159_44306.html",
+      "excerpt": null,
+      "checkedAt": null,
+      "applicability": "Candidate Alibaba International agreement; verify current applicable merchant/listing requirements with official documents.",
+      "status": "needs_rule_verification"
+    },
+    {
+      "id": "PLAT-AMZ-DE-001",
+      "category": "platform_rule",
+      "market": "DE",
+      "platform": "amazon_de",
+      "segment": "b2c",
+      "sourceUrl": "https://sellercentral.amazon.de/help/hub/reference/external/G200335450",
+      "excerpt": null,
+      "checkedAt": null,
+      "applicability": "May require login. Capture applicable Germany text before asserting any platform violation.",
+      "status": "needs_rule_verification"
+    }
+  ],
+  "artifacts": [],
+  "versions": [],
+  "findings": [],
+  "revisions": [],
+  "tasks": [],
+  "audit": []
+}

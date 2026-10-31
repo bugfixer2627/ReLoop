@@ -1,0 +1,25 @@
+{
+  "project": "ReLoop AI",
+  "stage": "foundation",
+  "runtime": { "node": ">=22.19.0", "framework": "Next.js App Router", "database": "Supabase Postgres" },
+  "platforms": [
+    { "id": "shopify_us", "market": "US", "segment": "b2c", "format": "shopify_description", "liveIntegration": false },
+    { "id": "amazon_de", "market": "DE", "segment": "b2c", "format": "amazon_listing", "englishFallback": "internal_reviewer_brief", "liveIntegration": false },
+    { "id": "alibaba_intl", "market": "global_b2b", "segment": "b2b", "format": "alibaba_b2b", "liveIntegration": false }
+  ],
+  "languages": [
+    { "locale": "zh-CN", "priority": "P0", "generationStatus": "unavailable", "speechStatus": "unavailable" },
+    { "locale": "en-US", "priority": "P0", "generationStatus": "unavailable", "speechStatus": "unavailable" },
+    { "locale": "de-DE", "priority": "P1", "generationStatus": "unavailable", "speechStatus": "unavailable" },
+    { "locale": "ar-AE", "priority": "P2", "generationStatus": "unavailable", "speechStatus": "unavailable" }
+  ],
+  "aiProvider": null,
+  "transcriptionProvider": null,
+  "validationCategories": ["evidence", "market_law", "platform_rule"],
+  "competitionValidationCategories": ["market_law", "platform_rule"],
+  "revisions": { "artifactKinds": ["support_reply", "listing_correction"], "demoFollowUpsPerKind": 2, "preserveHistory": true, "reviewByVersion": true },
+  "audio": { "maxBytes": 10485760, "maxSeconds": 60, "retained": false, "requiresTranscriptConfirmation": true },
+  "externalPublishing": false,
+  "seedSynthetic": true,
+  "requiredEnvironmentVariableNames": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "DATABASE_URL", "LLM_PROVIDER", "LLM_API_KEY", "LLM_MODEL", "TRANSCRIPTION_PROVIDER", "TRANSCRIPTION_API_KEY", "TRANSCRIPTION_MODEL", "DEMO_ACCESS_TOKEN"]
+}
