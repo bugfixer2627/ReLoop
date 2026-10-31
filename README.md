@@ -15,6 +15,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires a configured Supabase database and `DEMO_ACCESS_TOKEN`; enter that token on `/login`. The token is kept in browser memory only and must be entered again after reload. There is no user-account or cookie-session service on production `main`. [The health endpoint](http://localhost:3000/api/health) reports database availability and generation/transcription implementation status.
 
+If your network requires an HTTP proxy, set `HTTPS_PROXY`, `NODE_USE_ENV_PROXY=1`, and `NO_PROXY=localhost,127.0.0.1` in `.env.local`; the dev launcher passes these settings to Node. To access the dev server through a local network hostname or IP, add it to `NO_PROXY` and set `RELOOP_DEV_ORIGINS` to that hostname or IP (comma-separated for multiple hosts). Restart the dev server after changing proxy settings. Use `http://localhost:3000` when working on the same computer.
+
 On this Windows machine, npm needs the Windows trust store. If npm reports `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, keep TLS validation enabled:
 
 ```powershell
@@ -34,7 +36,7 @@ npm ci
 
 ## Backend boundary
 
-`GET/POST /api/cases` and `GET /api/cases/:id` are implemented against Supabase and protected by the bearer token. Analysis, support/listing generation, speech transcription, revision, review, task, and audit-write workflows are incomplete on production `main` and return HTTP `501 NOT_IMPLEMENTED`.
+Case list/create/load, evidence-only analysis, task and review routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. Apply the new database migration before using them. No login/session UI is implemented yet. **AI generation, legal/platform rule checks, transcription and revision generation are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**; revision persistence is available for future integration. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
 
 The local `.env.example` was removed by the merged production branch. Never commit credentials. Use the deployment/local environment setup agreed by the backend owners. Do not copy provider keys into frontend configuration. Remote `feat/ai-api` and `feat/backend` contain unmerged changes; the frontend branch did not merge or alter them.
 
