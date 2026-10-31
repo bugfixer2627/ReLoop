@@ -75,6 +75,8 @@ npm run build
 
 `npm run check` runs all four. CI repeats these on pushes and PRs. Actual model, speech, live Supabase and two complete MVP rehearsals require feature implementation and credentials; foundation tests do not establish those gates.
 
+An independent prompt-routing CLI is available for local experiments; it does not enable product generation endpoints. See [Prompt Router](docs/PROMPT_ROUTER.md) for model selection, explicit eval criteria, bounded escalation, and offline tests.
+
 With the app running, `npm run smoke` checks the three preview routes, unknown-case 404s, health and all ten explicit 501 business stubs. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address. Update this foundation-only smoke script as real workflows replace stubs.
 
 ## Team handoff
