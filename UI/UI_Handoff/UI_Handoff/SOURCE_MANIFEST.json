@@ -1,0 +1,245 @@
+{
+  "description": "Exact copied implementation/assets/reference screenshot hashes. Generated handoff-only docs, favicon derivatives and contracts are excluded from this source-copy manifest.",
+  "entries": [
+    {
+      "source": "src/app/brand.css",
+      "destination": "src/app/brand.css",
+      "sha256": "b133b00d5b932a1baed9e96f82ece057b9c5b5edec84235a2c6b01be11cb104b",
+      "bytes": 13615
+    },
+    {
+      "source": "src/app/dashboard/page.tsx",
+      "destination": "src/app/dashboard/page.tsx",
+      "sha256": "5f0073daaf4095dffcd9f9177a7e27cf193129fde4a4ac74b922448fb1b374f7",
+      "bytes": 4427
+    },
+    {
+      "source": "src/app/design-lab/page.tsx",
+      "destination": "src/app/design-lab/page.tsx",
+      "sha256": "f1730bea6a3eb0144b4877160fcdda45d59dfc9715e8f3e201e9b14525d5b882",
+      "bytes": 9569
+    },
+    {
+      "source": "src/app/feedback/page.tsx",
+      "destination": "src/app/feedback/page.tsx",
+      "sha256": "2bb04b29efaa912f52288cd2528b114f3e8ce69682074e453bed59bc9e425529",
+      "bytes": 5496
+    },
+    {
+      "source": "src/app/fix-approve/page.tsx",
+      "destination": "src/app/fix-approve/page.tsx",
+      "sha256": "ccb1a54ee30891d128195558f951e25f15089ca7f0a42bf2ecd16f7c61219e75",
+      "bytes": 5646
+    },
+    {
+      "source": "src/app/globals.css",
+      "destination": "src/app/globals.css",
+      "sha256": "d29569e0bcdcc669b399bfa3811ad03500f29d0652297fb7364b31cb08194c47",
+      "bytes": 30691
+    },
+    {
+      "source": "src/app/investigation/page.tsx",
+      "destination": "src/app/investigation/page.tsx",
+      "sha256": "71b7beebccf71f6a36d7d7b11796f7c5f5eae172b7d1146087e4aad968502175",
+      "bytes": 5469
+    },
+    {
+      "source": "src/app/layout.tsx",
+      "destination": "src/app/layout.tsx",
+      "sha256": "f825636bff73edf10d4c38976e6b92354558dd2a923844fdb1480d93b0ea5ec3",
+      "bytes": 394
+    },
+    {
+      "source": "src/app/login/page.tsx",
+      "destination": "src/app/login/page.tsx",
+      "sha256": "4565d1aadbd594047eaee8029ed69c86441198a6a0da68975e96523633197ed6",
+      "bytes": 2211
+    },
+    {
+      "source": "src/app/page.tsx",
+      "destination": "src/app/page.tsx",
+      "sha256": "d6619fd7fac737f206a6957241112e392185b21cf53146ce4b01274dae5494f3",
+      "bytes": 5079
+    },
+    {
+      "source": "src/components/Brand.tsx",
+      "destination": "src/components/Brand.tsx",
+      "sha256": "90f673e9695ea8c7e243e9e806e67af676b4de6c608f8eacee84ef9213c9f009",
+      "bytes": 576
+    },
+    {
+      "source": "src/components/icons.tsx",
+      "destination": "src/components/icons.tsx",
+      "sha256": "71d827b8d441280985607b7c66184c40163b1c78cf37869b5bdea812ac7193c2",
+      "bytes": 2187
+    },
+    {
+      "source": "src/components/WorkspaceShell.tsx",
+      "destination": "src/components/WorkspaceShell.tsx",
+      "sha256": "39a4e9b0fb627cbc566d5c4c1bd80df2b704ee822f96e7ca55de0adfc98214b0",
+      "bytes": 5083
+    },
+    {
+      "source": "public/brand/inter-latin-variable.woff2",
+      "destination": "public/brand/inter-latin-variable.woff2",
+      "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
+      "bytes": 48256
+    },
+    {
+      "source": "public/brand/Inter-OFL.txt",
+      "destination": "public/brand/Inter-OFL.txt",
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "bytes": 4377
+    },
+    {
+      "source": "public/brand/reloop-infinity-on-dark.png",
+      "destination": "public/brand/reloop-infinity-on-dark.png",
+      "sha256": "3ce74d4197fe624aaeefc203e812b61c96115c6024da06df9ddc9875bf08a533",
+      "bytes": 181129
+    },
+    {
+      "source": "public/brand/reloop-infinity-on-light.png",
+      "destination": "public/brand/reloop-infinity-on-light.png",
+      "sha256": "af2b082393e2b35a96155229011e67f7270513730500d8b1be4f601c656ef906",
+      "bytes": 277543
+    },
+    {
+      "source": "public/brand/reloop-infinity.png",
+      "destination": "public/brand/reloop-infinity.png",
+      "sha256": "e5395467b639e1430d4227baf54c157dfeb154f76fe282e875ecb24066fc5ab9",
+      "bytes": 331434
+    },
+    {
+      "source": "public/brand/reloop-process-loop.png",
+      "destination": "public/brand/reloop-process-loop.png",
+      "sha256": "7f84dbac65c81c1fad0e7c00159c1caeca93f3b6d526c59417d87173b142b4b1",
+      "bytes": 989464
+    },
+    {
+      "source": "public/brand/reloop-waveform.png",
+      "destination": "public/brand/reloop-waveform.png",
+      "sha256": "7b2aa3d0e1603fd6ae007993f395eb49b280f7d89616f550690ab9e4cce5b0c4",
+      "bytes": 1357230
+    },
+    {
+      "source": "public/brand/reloop-wordmark-on-dark.png",
+      "destination": "public/brand/reloop-wordmark-on-dark.png",
+      "sha256": "6bc34667526930eac068f934830ca4015fb2367b3c63be7a7e40a737e7b04303",
+      "bytes": 168961
+    },
+    {
+      "source": "public/brand/reloop-wordmark-on-light.png",
+      "destination": "public/brand/reloop-wordmark-on-light.png",
+      "sha256": "4b917300887d0e87f2cd1a09238d56672fd3f0d1e4926ca61a0f6bf0abb71a0b",
+      "bytes": 371507
+    },
+    {
+      "source": "public/brand/reloop-wordmark.png",
+      "destination": "public/brand/reloop-wordmark.png",
+      "sha256": "03c49f3943b7d149643fe35c7b574000fb1a9d4b4388d9f2c744a2436ce32213",
+      "bytes": 434837
+    },
+    {
+      "source": "public/spark-avatar.png",
+      "destination": "public/spark-avatar.png",
+      "sha256": "052736905a9e1460cbec88025afc40ce1cc6cfd157a0cb74c2cfa2c85e1aaaa6",
+      "bytes": 25786
+    },
+    {
+      "source": "README.md",
+      "destination": "reference-docs/README.md",
+      "sha256": "99d02c59634dfca6e1d7bb8d1dff2a577b95613a10cafbcd6b72f763cc0d0f12",
+      "bytes": 1767
+    },
+    {
+      "source": "DESIGN_DECISIONS.md",
+      "destination": "reference-docs/DESIGN_DECISIONS.md",
+      "sha256": "d7e36eb4221b2f7151a2f6a8be3233d225f1666edb9390468e4494fed740864b",
+      "bytes": 2716
+    },
+    {
+      "source": "ASSET_LICENSES.md",
+      "destination": "reference-docs/ASSET_LICENSES.md",
+      "sha256": "022476eafdf408c4496c6ef174811bff23d96ffb86aeac526f0a9d4b963e7340",
+      "bytes": 2447
+    },
+    {
+      "source": "BRAND_ASSETS.md",
+      "destination": "reference-docs/BRAND_ASSETS.md",
+      "sha256": "6ef13a359299d3523da81df20c5ce99eb4c74c7e4130e0d9b93f58ccc83dfbc6",
+      "bytes": 2548
+    },
+    {
+      "source": "TEMPLATE_COMPARISON.md",
+      "destination": "reference-docs/TEMPLATE_COMPARISON.md",
+      "sha256": "bcec6ae0fb7985b32b24a5eb5ebe620f8bc0f70253e53b57102719ad1ce70b3b",
+      "bytes": 2329
+    },
+    {
+      "source": "INTEGRATION_GUIDE.md",
+      "destination": "reference-docs/INTEGRATION_GUIDE.md",
+      "sha256": "da4d14ecec5d30601cc1963d5b66ca391eee93df6d706f61eafe7ace9fc73e21",
+      "bytes": 1887
+    },
+    {
+      "source": "screenshots/brand-kit/claim-investigation-1920x1080.png",
+      "destination": "screenshots/claim-investigation-1920x1080.png",
+      "sha256": "3c84d17a8082a083e3e564a05145ab73faae5800f860f2be5f7c554eed1a1681",
+      "bytes": 194412
+    },
+    {
+      "source": "screenshots/brand-kit/dashboard-1920x1080.png",
+      "destination": "screenshots/dashboard-1920x1080.png",
+      "sha256": "f0c1a3bc05ec34620a70062963e17e6d70c5917b5270abc16311360431f4f0fe",
+      "bytes": 172482
+    },
+    {
+      "source": "screenshots/brand-kit/dashboard-mobile-390x844.png",
+      "destination": "screenshots/dashboard-mobile-390x844.png",
+      "sha256": "210fdc0f893e881027ba4509d8e264d02a0c0fd7284bffb068f18749d44cef18",
+      "bytes": 44847
+    },
+    {
+      "source": "screenshots/brand-kit/feedback-inbox-1920x1080.png",
+      "destination": "screenshots/feedback-inbox-1920x1080.png",
+      "sha256": "5198fc660dd491a4838fb0202574b75e11b5c5f1749ec7dcb289ca9dff9555c2",
+      "bytes": 162895
+    },
+    {
+      "source": "screenshots/brand-kit/fix-approve-1920x1080.png",
+      "destination": "screenshots/fix-approve-1920x1080.png",
+      "sha256": "0052fb43e4179189b4bbc2ad357dd3ffa5fe0c50f10d2974cc7188962b4cb393",
+      "bytes": 164889
+    },
+    {
+      "source": "screenshots/brand-kit/landing-1920x1080.png",
+      "destination": "screenshots/landing-1920x1080.png",
+      "sha256": "4713ce8694d54341daa1bfb40e1e20f556385fc71f6db6470b394d0f87036e82",
+      "bytes": 341571
+    },
+    {
+      "source": "screenshots/brand-kit/landing-mobile-390x844.png",
+      "destination": "screenshots/landing-mobile-390x844.png",
+      "sha256": "1ef003d331c77e750ce3fa2b845459ab5b0a7474a3e69ba662d09293c6cf2502",
+      "bytes": 105772
+    },
+    {
+      "source": "screenshots/brand-kit/login-1920x1080.png",
+      "destination": "screenshots/login-1920x1080.png",
+      "sha256": "67f8c36c07e6323e98143b4bff6cca8474d7cf1c62a96895375efb5f854f5bb5",
+      "bytes": 104766
+    },
+    {
+      "source": "tailwind.config.ts",
+      "destination": "build-reference/tailwind.config.ts",
+      "sha256": "10f69a533e751ac8987fe3b8710447e8be2625c1c582279a09fb7fa15bb9977f",
+      "bytes": 229
+    },
+    {
+      "source": "postcss.config.mjs",
+      "destination": "build-reference/postcss.config.mjs",
+      "sha256": "08910ce1d5cd87d2167e9c78b77262bf985b3f07dc5037ff745ecd6a759fd0c0",
+      "bytes": 67
+    }
+  ]
+}

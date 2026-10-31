@@ -1,0 +1,1673 @@
+{
+  "mock": true,
+  "description": "Exact source-derived static UI text/input and useState inventory, including non-data UI labels. The canonical fixtures remain embedded in src; this file is not a service or runtime data provider.",
+  "files": [
+    {
+      "file": "src/app/dashboard/page.tsx",
+      "states": [],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Export report"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "New case"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Open cases"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "↗"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "24"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "↑ 12% from last week"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "High risk claims"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "!"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "07"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "3 need approval today"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Avg. review time"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "◷"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "2.4h"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "↓ 18% from last week"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Claims cleared"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "✓"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "86%"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "↑ 4.6% from last week"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Complaint themes"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "30 days"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "90 days"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Sep 16"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Sep 23"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Sep 30"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Oct 07"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Oct 14"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Recent activity"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "View inbox"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "RL-2408"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "was moved to investigation"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Jasmine · 18 minutes ago"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "RL-2407"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "needs a localized correction"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Marco · 1 hour ago"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "RL-2406"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "was approved for Alibaba"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Jasmine · Yesterday"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "New evidence source was added"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "System · Yesterday"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Recent customer cases"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Open inbox →"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Case"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Channel"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Risk"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Updated"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "SKU"
+        }
+      ]
+    },
+    {
+      "file": "src/app/design-lab/page.tsx",
+      "states": [
+        {
+          "binding": "[modal, setModal]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[voice, setVoice]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[loading, setLoading]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[dropdown, setDropdown]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[palette, setPalette]",
+          "initialValue": "0"
+        },
+        {
+          "binding": "[toast, setToast]",
+          "initialValue": "''"
+        }
+      ],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Save comparison"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "01 · Typography"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Inter · Official display"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Clear claims, better context"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "ReLoop helps teams connect overseas feedback to product evidence."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Review case"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Inter · Official interface"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "清晰表达，可信出海"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Review the product claim against the submitted test report and storefront copy."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "查看案例"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "English / Simplified Chinese sample · browser fallback fonts remain enabled"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "02 · Color palettes"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Comparison only · token choice is not changed"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "03 · Buttons & states"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Primary action"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Accent action"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Secondary"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Disabled"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "04 · Cards"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Open cases"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "↗"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "24"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "↑ 12% from last week"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Claims cleared"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "86%"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "↑ 4.6% from last week"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "05 · Navigation"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Overview"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Inbox"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Investigation"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Workspace menu⌄"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "My workspace"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Team settings"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Sign out"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Sidebar navigation collapses on small screens; active route uses the forest and lime contrast."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "06 · Icons"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "07 · Status badges"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "High risk"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Needs review"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Clear"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "In progress"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "08 · Voice input"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Example transcript:"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "“The customer reports the zipper opened in light rain.”"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "09 · Dialogs"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Open approval dialog"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "10 · Loading & empty states"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "No matching cases"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Try adjusting the platform or status filters."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Preparing example analysis"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Local demo state · no AI service connected."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Approval check"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Approve this revision?"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "×"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "This will update the approval state in the local visual demo only."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Cancel"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Confirm approval"
+        }
+      ]
+    },
+    {
+      "file": "src/app/feedback/page.tsx",
+      "states": [
+        {
+          "binding": "[recording, setRecording]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[analyzed, setAnalyzed]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[transcript, setTranscript]",
+          "initialValue": "'The customer says the bottle started leaking after a week of daily use. They expected it to be completely leak-proof as shown in the product listing.'"
+        }
+      ],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Import example"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "New customer case"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Mock input"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Merchant instruction"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "· 中文 / English"
+        },
+        {
+          "kind": "defaultValue",
+          "value": "请检查这条客诉是否与防水宣传有关，并准备美国站点的修订建议。\\nReview whether this complaint relates to the waterproof claim and prepare a US storefront revision."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "SKU"
+        },
+        {
+          "kind": "defaultValue",
+          "value": "H2O-BTL-750"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "H2O-BTL-750 · 750ml bottle"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "TRVL-DRY-02 · travel organizer"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "HOME-ORG-11 · storage set"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Platform"
+        },
+        {
+          "kind": "defaultValue",
+          "value": "Shopify US"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Shopify US"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Amazon Germany"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Alibaba International Station"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Customer complaint"
+        },
+        {
+          "kind": "defaultValue",
+          "value": "The bottle started leaking after a week of daily use. I expected it to be completely leak-proof as shown in the product listing."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Stop"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Editable transcript preview"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "· example text"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Example result:"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "likely claim mismatch · “completely leak-proof” requires evidence review."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Recent customer cases"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "4 this week"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "RL-2408"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Material thickness concern"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Amazon Germany · 2h ago"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "RL-2407"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Waterproof claim"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Shopify US · 5h ago"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "RL-2406"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Color mismatch"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Alibaba Intl. · Yesterday"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Input checklist"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "✓ Original complaint captured"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "✓ SKU context selected"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "○ Attach evidence later"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 7,
+          "value": "Open example investigation"
+        }
+      ]
+    },
+    {
+      "file": "src/app/fix-approve/page.tsx",
+      "states": [
+        {
+          "binding": "[platform, setPlatform]",
+          "initialValue": "platforms[0]"
+        },
+        {
+          "binding": "[approved, setApproved]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[draft, setDraft]",
+          "initialValue": "'Water-resistant travel organizer with a sealed zipper, designed to help keep belongings dry during light rain and everyday travel.'"
+        },
+        {
+          "binding": "[chat, setChat]",
+          "initialValue": "''"
+        },
+        {
+          "binding": "[messages, setMessages]",
+          "initialValue": "[{ from: 'agent', text: 'I softened the absolute claim and added the tested condition. Want a more concise version for the mobile card?' }]"
+        }
+      ],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Save draft"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Original text"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Our"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "completely waterproof"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "travel organizer keeps every item dry in"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "any weather"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "2 absolute claims · evidence mismatch"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Corrected draft · editable"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "✓ Condition and material now match test scope"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Revision chat"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Mock assistant"
+        },
+        {
+          "kind": "placeholder",
+          "value": "Ask for a shorter or softer revision…"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Send"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Revision history"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "3 versions"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "v3 · Current draft"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Jasmine · Just now"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "v2 · Qualified wording added"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "ReLoop demo · 9:38 AM"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "v1 · Original listing copy"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Imported · 14 Oct"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "QA task timeline"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Claim scope reviewed"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Evidence attached · complete"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Localized copy prepared"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "· complete"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Merchant approval"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Publish to storefront"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Production action not connected"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Approval note"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Approving updates this visual demo only. Production publishing and policy checks remain outside this design lab."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 9,
+          "value": "Back to overview"
+        }
+      ]
+    },
+    {
+      "file": "src/app/investigation/page.tsx",
+      "states": [],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Save note"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Continue to fix"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Overall risk"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "High"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Claim needs correction"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Evidence matches"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "2 / 5"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "3 unsupported signals"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Market exposure"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "US"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Shopify storefront"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Last reviewed"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "14 Oct"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Jasmine Li · 09:42"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Customer complaint"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "“The organizer got wet inside after a short rain shower. The listing says it is completely waterproof, so I expected the clothes to stay dry.”"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Original · English"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Photo attached"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Claim comparison"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "3 mismatches"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Existing marketing claim"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "“Our"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "completely waterproof"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "travel organizer keeps every item dry in any weather.”"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Product specification"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Water-resistant nylon shell with sealed zipper. Tested under"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "light splash conditions"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "; not rated for submersion."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "!"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Absolute wording exceeds test scope"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "“Completely” and “any weather” imply performance beyond the supplied light-splash test."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "↗"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Customer scenario is plausible"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Short rain shower falls within the ambiguous boundary and should be addressed in localized copy."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Findings"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Claim confidence"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Needs evidence"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "38%"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Customer impact"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "High"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "82%"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Revision urgency"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Today"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "91%"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Law & platform notes"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Mock research"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "US"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "FTC advertising standard"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Environmental and performance claims should be truthful, qualified, and supported before publication."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "S"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Shopify merchant policy"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Product descriptions must accurately represent material properties and limitations."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Source references"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "2 links · open ↗"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Internal test report · TRVL-DRY-02"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "PDF"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "Customer photo · RL-2407"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 5,
+          "value": "JPG"
+        }
+      ]
+    },
+    {
+      "file": "src/app/layout.tsx",
+      "states": [],
+      "values": []
+    },
+    {
+      "file": "src/app/login/page.tsx",
+      "states": [
+        {
+          "binding": "[show, setShow]",
+          "initialValue": "false"
+        }
+      ],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 16,
+          "value": "Back to ReLoop"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 19,
+          "value": "Welcome back."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 20,
+          "value": "Your next review starts with a clearer picture."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 22,
+          "value": "Email address"
+        },
+        {
+          "kind": "value",
+          "value": "jasmine.li@reloop.demo"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 23,
+          "value": "Password"
+        },
+        {
+          "kind": "value",
+          "value": "demo-access"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 24,
+          "value": "Remember me"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 24,
+          "value": "Demo account"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 25,
+          "value": "Enter demo workspace"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 27,
+          "value": "Visual prototype"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 28,
+          "value": "Demo only."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 28,
+          "value": "No credentials are stored and no authentication service is connected."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 30,
+          "value": "ReLoop AI Design Lab"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 30,
+          "value": "/"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 30,
+          "value": "Explore components"
+        }
+      ]
+    },
+    {
+      "file": "src/app/page.tsx",
+      "states": [],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 11,
+          "value": "Product"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 12,
+          "value": "Workflow"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 13,
+          "value": "Resources"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 14,
+          "value": "Design lab"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 17,
+          "value": "Log in"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 18,
+          "value": "Book a demo"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 24,
+          "value": "Cross-border product clarity"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 25,
+          "value": "Turn Customer Feedback Into"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 25,
+          "value": "Better Global Products"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 26,
+          "value": "ReLoop AI helps cross-border merchants flag potential product-claim gaps, review supporting evidence, and prepare localized listing corrections across international marketplaces."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 28,
+          "value": "Launch ReLoop"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 29,
+          "value": "Explore demo"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 34,
+          "value": "Customer report"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 35,
+          "value": "Claim review"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 36,
+          "value": "Localized correction"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 37,
+          "value": "Team approval"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 43,
+          "value": "A connected review loop"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 43,
+          "value": "Clear context at every step."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 44,
+          "value": "Bring the original customer message, the relevant product evidence, and the destination listing into one reviewable workflow."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 47,
+          "value": "Capture feedback"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 47,
+          "value": "Keep the complaint, language, SKU, and marketplace together as a case."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 48,
+          "value": "Review claim gaps"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 48,
+          "value": "Compare the listing language with supplied specifications and source material."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 49,
+          "value": "Prepare a correction"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 49,
+          "value": "Draft localized copy and review each marketplace version before approval."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 56,
+          "value": "Review, revise, approve"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 56,
+          "value": "From customer report to a clearer listing."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 56,
+          "value": "ReLoop brings a team's review steps into view. Example content in this design lab is mock data and does not represent a production analysis."
+        },
+        {
+          "kind": "jsx-text",
+          "line": 56,
+          "value": "Explore the workspace"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 58,
+          "value": "01"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 58,
+          "value": "Capture feedback"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 58,
+          "value": "Complaint, product, channel, language"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 59,
+          "value": "02"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 59,
+          "value": "Review the claim"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 59,
+          "value": "Compare the copy and supporting material"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 60,
+          "value": "03"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 60,
+          "value": "Prepare a revision"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 60,
+          "value": "Localized copy and merchant approval"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 65,
+          "value": "ReLoop AI · UI Design Lab"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 65,
+          "value": "Visual prototype · Example content only"
+        }
+      ]
+    },
+    {
+      "file": "src/components/Brand.tsx",
+      "states": [],
+      "values": []
+    },
+    {
+      "file": "src/components/icons.tsx",
+      "states": [],
+      "values": []
+    },
+    {
+      "file": "src/components/WorkspaceShell.tsx",
+      "states": [
+        {
+          "binding": "[open, setOpen]",
+          "initialValue": "false"
+        },
+        {
+          "binding": "[lang, setLang]",
+          "initialValue": "'EN'"
+        },
+        {
+          "binding": "[quickOpen, setQuickOpen]",
+          "initialValue": "false"
+        }
+      ],
+      "values": [
+        {
+          "kind": "jsx-text",
+          "line": 26,
+          "value": "Menu"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 28,
+          "value": "Components"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 29,
+          "value": "Design lab"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 29,
+          "value": "Forms & input"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 30,
+          "value": "Pages"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 31,
+          "value": "Login screen"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 31,
+          "value": "Public landing"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 32,
+          "value": "Jasmine Li"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 32,
+          "value": "jasmine.li@reloop.demo"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 36,
+          "value": "Create"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 36,
+          "value": "Quick actions"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 36,
+          "value": "New customer case"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 36,
+          "value": "Review a claim"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 36,
+          "value": "Open approval queue"
+        },
+        {
+          "kind": "placeholder",
+          "value": "Search anything in ReLoop…"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 38,
+          "value": "Jasmine Li"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 38,
+          "value": "⌄"
+        },
+        {
+          "kind": "jsx-text",
+          "line": 40,
+          "value": "Demo workspace · Mock data"
+        }
+      ]
+    }
+  ]
+}

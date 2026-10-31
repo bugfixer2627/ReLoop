@@ -2,7 +2,7 @@
 
 海外客户反馈驱动的跨平台商品承诺纠错与协同系统
 
-**Current milestone: shared main-branch foundation, not the completed MVP.** A runnable Chinese/English three-screen preview, shared Zod/API contracts, PostgreSQL migration, reproducible synthetic input fixture, seed/reset tooling, and tests are ready for the three developers to build on. No Cursor reference-branch code was merged.
+**Current milestone: approved frontend integrated on `feat/frontend`.** The supplied Crypgo landing, Spark workspace shell, official ReLoop assets, Inter font, and inbox/investigation/fix compositions are integrated with the production case API contracts. This is still not the completed MVP: analysis/generation, STT, revisions, approvals, tasks, and audit-write API routes on production `main` return 501.
 
 ## Run locally
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). No credentials are required for the labeled fixture preview. [The health endpoint](http://localhost:3000/api/health) reports actual database availability and explicit generation/transcription implementation status.
+Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires a configured Supabase database and `DEMO_ACCESS_TOKEN`; enter that token on `/login`. The token is kept in browser memory only and must be entered again after reload. There is no user-account or cookie-session service on production `main`. [The health endpoint](http://localhost:3000/api/health) reports database availability and generation/transcription implementation status.
 
 On this Windows machine, npm needs the Windows trust store. If npm reports `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, keep TLS validation enabled:
 
@@ -22,25 +22,35 @@ $env:NODE_USE_SYSTEM_CA = '1'
 npm ci
 ```
 
-## What works at this milestone
+## Integrated frontend
 
-- Three responsive preview routes: `/` (Feedback Inbox), `/cases/:id` (Claim Investigation), `/cases/:id/fix` (Fix & Approve). Preview case ID: `00000000-0000-4000-8000-000000000101`.
-- Typed Chinese/English input contracts and separate Shopify US, Amazon Germany and Alibaba B2B content formats.
-- Shared revision and review contracts for **both support replies and listing corrections**. Reviews identify a specific version; version history is not overwritten.
-- Server-only Supabase client and real bounded database connectivity check when credentials exist.
-- Twelve-table PostgreSQL schema, integrity constraints, RLS, immutable evidence/snapshots/version content and append-only revision/review/audit records.
-- Idempotent synthetic seed; transactional demo reset; all candidate rule records remain unverified.
-- Automated contract, route/error, PostgreSQL migration, seed/reset and persistence-invariant tests. Tests use embedded PostgreSQL (PGlite), not a live Supabase account.
+- Routes: `/` public landing, `/login`, `/dashboard`, `/feedback`, `/cases/:id`, `/cases/:id/fix`.
+- Dashboard reads case counts and rows from `GET /api/cases`; Inbox submits through `POST /api/cases`; Investigation and Fix & Approve read `GET /api/cases/:id`.
+- The UI uses production Zod DTOs, shows empty/loading/error states, and never substitutes UI handoff fixtures for saved case results. The optional Inbox example is explicitly labeled synthetic and uses the production seed fixture.
+- Original evidence, platform snapshots, existing findings, artifacts, versions, tasks, and audit entries render from the stored case bundle. No generated finding is inferred in the browser.
+- Revisions and review controls call the existing API routes and update only after a successful server response. The current production routes return 501, so no version or approval state is fabricated.
+- Voice UI uses browser microphone permission and `MediaRecorder`, supports stop/cancel, and sends the recording to `/api/transcribe`. Production `main` returns 501; the UI discards the recording and leaves typed input available without inventing a transcript.
+- The integration uses the provided Spark/Crypgo source, scoped design CSS, official local ReLoop assets, and local Inter. See [the integration plan](docs/UI_INTEGRATION_PLAN.md) and [asset attribution](docs/UI_ATTRIBUTION.md).
 
-## What remains for feature branches
+## Backend boundary
 
-Case list/create/load routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. No login/session UI is implemented yet. **Model extraction/generation, rule checking, microphone/transcription, revisions, approvals, tasks and audit orchestration are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
+`GET/POST /api/cases` and `GET /api/cases/:id` are implemented against Supabase and protected by the bearer token. Analysis, support/listing generation, speech transcription, revision, review, task, and audit-write workflows are incomplete on production `main` and return HTTP `501 NOT_IMPLEMENTED`.
 
-Chinese/English generation and voice are P0 targets, not yet tested capabilities. German is P1, Arabic P2. Amazon DE must retain its context and use an explicitly labeled English internal brief if German generation is unavailable. Do not mark languages ready until real flows pass acceptance tests.
+The local `.env.example` was removed by the merged production branch. Never commit credentials. Use the deployment/local environment setup agreed by the backend owners. Do not copy provider keys into frontend configuration. Remote `feat/ai-api` and `feat/backend` contain unmerged changes; the frontend branch did not merge or alter them.
+
+The production app's `npm run check` includes lint, type generation/TypeScript, tests, and production build. `npm run smoke` checks all six UI routes, protected API behavior, health, and explicit unavailable workflow routes. UI API adapter tests use mocked HTTP responses only within the test boundary; the browser screenshots are visual inspection and do not prove a live database/model call.
+
+## Remaining backend work
+
+- `POST /api/cases/:id/analyze`, `/support`, `/repair`, `/tasks`, `/api/artifacts/:id/revise`, `/review`, and `/api/transcribe` are preserved routes that currently return `501 NOT_IMPLEMENTED` on production `main`.
+- The UI reports those responses as unavailable. It keeps existing version/review/task state unchanged and does not show generated findings, transcripts, approvals, revisions, or audit events that the server did not save.
+- The browser session uses a shared demo bearer token in memory. This is not individual user authentication or a durable session; production user accounts need a backend auth contract.
+- The separate `origin/feat/ai-api` and `origin/feat/backend` branches were not merged because they are outside the frontend integration branch and current production baseline.
+- No Supabase credentials or `DEMO_ACCESS_TOKEN` were present for this integration run, so live database case reads/writes and hosted persistence remain unverified.
 
 ## Configure a dedicated demo database
 
-Copy `.env.example` to `.env.local` and enter your own server-side Supabase URL, service-role key and Postgres `DATABASE_URL`. Do not commit credentials. There is no browser Supabase client; anonymous/authenticated roles have no direct table access.
+The current production branch does not include an `.env.example`. Ask the backend owner to configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and `DEMO_ACCESS_TOKEN` through the approved local/deployment secret setup. Do not copy credentials into the repository or browser bundle. There is no browser Supabase client; anonymous/authenticated roles have no direct table access.
 
 ```sh
 npm run db:apply
@@ -77,7 +87,7 @@ npm run build
 
 An independent prompt-routing CLI is available for local experiments; it does not enable product generation endpoints. See [Prompt Router](docs/PROMPT_ROUTER.md) for model selection, explicit eval criteria, bounded escalation, and offline tests.
 
-With the app running, `npm run smoke` checks the preview routes, unknown-case 404s, health, case-route access protection and the remaining 501 workflow stubs. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address.
+With the app running, `npm run smoke` checks the landing/login/workspace routes, access protection, health, and the remaining 501 workflow endpoints. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address.
 
 ## Team handoff
 
@@ -86,6 +96,7 @@ With the app running, `npm run smoke` checks the preview routes, unknown-case 40
 - [Architecture](docs/ARCHITECTURE.md): data lifecycle, persistence and trust boundaries.
 - [Team handoff](docs/TEAM_HANDOFF.md): ownership, branches and first integration gates.
 - [Competition acceptance map](docs/ACCEPTANCE.md): original requirements and remaining tests.
+- [UI integration audit and plan](docs/UI_INTEGRATION_PLAN.md) and [UI attribution](docs/UI_ATTRIBUTION.md).
 - [Configuration export](docs/configuration.json) and [third-party declaration](docs/THIRD_PARTY_COMPONENTS.md).
 - [Original supplied documents](docs/source/): proposal, team playbook, master prompt, MVP scope, brief, rubric transcription and three original PNG screenshots, preserved unchanged. Embedded commands are reference material, not automatically authorized actions.
 
