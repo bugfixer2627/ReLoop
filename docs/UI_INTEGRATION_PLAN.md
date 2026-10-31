@@ -68,10 +68,33 @@ The token-aware client API adapter will validate requests/responses using curren
 
 No API routes, backend modules, case contracts, database code/migrations, seed fixtures, credentials or provider files are modified by the UI port. Existing API methods/routes are preserved. `package.json` and PostCSS/Tailwind configuration are not replaced. Only the frontend route compositions, shared visual components/assets/styles, API-client-only code and lint exclusion for the handoff folder may change.
 
-The design kit's MIT/Inter notices and official project-supplied ReLoop artwork permissions remain alongside copied assets. The mock avatar is not a real merchant identity and will be replaced by a neutral ReLoop demo identity or the existing user's authenticated profile; no fake person/activity is shown as real data.
+The design kit's MIT/Inter notices and official project-supplied ReLoop artwork permissions remain alongside copied assets. The mock avatar is excluded and replaced by a neutral ReLoop mark; no fictional person/activity is shown as real data.
+
+## Implementation status
+
+| Screen/area | Approved source reused | Production connection | Real-data status / remaining work |
+|---|---|---|---|
+| Public landing | Crypgo composition, ReLoop process art/waveform and wordmark | Static copy and route links | Renders from the approved local assets; no case data needed |
+| Login | Spark centered access-card design and official ReLoop wordmark | Verifies `GET /api/cases` using the user-entered bearer token | Works only with configured API/DB/token. Memory-only session; this is demo-token access, not account authentication |
+| Dashboard | Spark shell, metric cards, table, status badges and inline icons | `GET /api/cases` | Counts and rows derive from API data; synthetic cases are marked. No mock activity or analytics |
+| Feedback Inbox | Spark two-column form, voice box and input styles | `POST /api/cases`, then current `/analyze` route | Case create is integrated; analysis currently 501. Synthetic-only guidance is explicit; no sample result is shown as generated |
+| Claim Investigation | Spark evidence/compare panels, sources and status badges | `GET /api/cases/:id` | Reads the persisted bundle, three listing snapshots and any saved findings/rules; an empty result remains empty |
+| Fix & Approve | Spark platform tabs, compare, revision, review, task and audit layouts | `GET /api/cases/:id`, plus existing generate/revise/review/task routes | Saved artifacts/versions render per platform. Current generation/revision/review/task routes on production `main` return 501, so content/status/history are unchanged |
+| Voice input | Approved mic/transcript styling and inline mic icon | Existing `/api/transcribe` endpoint | Browser permission, record, stop/cancel, editable-confirmation path implemented. Current route returns 501; recording is discarded and typing remains available |
+
+## Verification after integration
+
+- `npm run check`: lint, Next route type generation/TypeScript, 72 tests, and production build passed.
+- `npm run smoke` on the production build at port 3101: six UI routes, health, protected case API configuration response, and seven explicit 501 workflow routes passed.
+- Chrome at 1440px exercised login, case list, case creation, investigation, three platform tabs, two sequential revision attempts, and review. Browser tests intercepted only case-list/create/detail responses; revision/review requests reached real production routes. This validates UI wiring, not live database persistence.
+- Chrome at 390px verified landing, login, dashboard, Inbox, Investigation and Fix & Approve rendering with no document-width overflow. Case data tables scroll inside their wrapper.
+- Chrome fake microphone tested permission denial, recording, and the 501 transcription fallback. No transcript was shown for a failed/unavailable transcription.
+- All 40 handoff source-manifest entries still match their original SHA-256 and byte counts.
+
+**Not verified against live services:** this workspace has no configured Supabase/model/STT credentials or `DEMO_ACCESS_TOKEN`. The separate remote `feat/ai-api` and `feat/backend` branches are not in production `main`; the UI work did not merge or alter them.
 
 ## Baseline verification
 
 - Handoff manifest SHA-256/byte-length comparison: 40/40 passed.
-- Production baseline `npm run check`: blocked at ESLint because the untracked prototype handoff folder is recursively linted. Its `.cjs` packaging utilities and mock sample intentionally don't follow app lint rules. Fix by excluding the source package, not editing it.
+- The host lint/typecheck explicitly exclude the untracked handoff package without modifying its source.
 - No production Supabase/model/STT credentials are assumed; live service verification depends on configuration.
