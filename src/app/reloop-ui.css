@@ -384,6 +384,11 @@
 .reloop-ui .finding-diff>div { min-width:0; padding:9px; border:1px solid var(--border); border-radius:7px; background:#fff; }
 .reloop-ui .finding-diff strong { color:var(--muted); font-size:9px; text-transform:uppercase; }
 .reloop-ui .finding-diff p { margin:5px 0 0; color:#42554a; overflow-wrap:anywhere; }
+.reloop-ui .workspace-skip { position:fixed; z-index:60; top:10px; left:16px; padding:11px 15px; transform:translateY(-160%); border-radius:8px; background:#fff; color:var(--forest); box-shadow:var(--shadow); font-size:13px; font-weight:700; }
+.reloop-ui .workspace-skip:focus-visible { transform:translateY(0); outline:3px solid var(--lime); outline-offset:2px; }
+.reloop-ui #workspace-main:focus-visible { outline:2px solid var(--lime); outline-offset:3px; }
+.reloop-ui .sidebar-mobile-actions { display:none; }
+.reloop-ui .sidebar-action:focus-visible,.reloop-ui .side-link:focus-visible { outline:2px solid var(--lime); outline-offset:2px; }
 @media (max-width:760px) {
   .reloop-ui.sidebar-collapsed .sidebar { width:280px; padding:22px 15px; }
   .reloop-ui.sidebar-collapsed .main-area { width:100%; margin:0; }
@@ -392,6 +397,16 @@
   .reloop-ui.sidebar-collapsed .sidebar-label,.reloop-ui.sidebar-collapsed .side-text,.reloop-ui.sidebar-collapsed .sidebar-bottom { display:initial; }
   .reloop-ui.sidebar-collapsed .side-link { justify-content:flex-start; padding:11px 12px; }
   .reloop-ui .sidebar-backdrop { display:block; position:fixed; inset:0; z-index:19; width:100%; height:100%; border:0; border-radius:0; background:rgba(5,28,18,.36); }
+  .reloop-ui .sidebar:not(.open) { visibility:hidden; }
+  .reloop-ui .sidebar.open { visibility:visible; }
+  .reloop-ui .sidebar { overscroll-behavior:contain; }
+  .reloop-ui .sidebar-mobile-actions { display:grid; gap:5px; margin-top:18px; padding:12px 10px 0; border-top:1px solid rgba(255,255,255,.12); }
+  .reloop-ui .sidebar-action { width:100%; min-height:42px; padding:9px 11px; border:0; border-radius:8px; background:transparent; color:#dbe6df; text-align:left; font-size:13px; font-weight:600; }
+  .reloop-ui .sidebar-action:hover { background:rgba(255,255,255,.08); color:#fff; }
+  .reloop-ui .topbar { height:auto; flex-wrap:wrap; justify-content:flex-start; }
+  .reloop-ui .topbar .navbar-search.dashboard-search { display:flex; order:3; flex:1 0 100%; width:100%; max-width:none; margin:0; }
+  .reloop-ui .navbar-search.dashboard-search input { min-height:42px; padding-right:44px; }
+  .reloop-ui .navbar-search.dashboard-search .icon-btn { right:8px; width:34px; height:34px; }
   .reloop-ui .input-row { grid-template-columns:1fr; }
   .reloop-ui .investigation-grid { grid-template-columns:1fr; }
   .reloop-ui .review-fields { grid-template-columns:1fr; }
