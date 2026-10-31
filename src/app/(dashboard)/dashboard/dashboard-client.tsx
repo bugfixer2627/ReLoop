@@ -18,7 +18,7 @@ export default function DashboardClient({ initialQuery }: { initialQuery: string
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query] = useState(initialQuery.trim());
+  const query = initialQuery.trim();
   const [reload, setReload] = useState(0);
 
   useEffect(() => {

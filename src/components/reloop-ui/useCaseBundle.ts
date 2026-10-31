@@ -10,6 +10,7 @@ export function useCaseBundle(caseId: string) {
   const [bundle, setBundle] = useState<CaseBundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [settledCaseId, setSettledCaseId] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -19,13 +20,15 @@ export function useCaseBundle(caseId: string) {
       if (active) { setBundle(value); setError(null); }
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof ApiRequestError ? reason.message : 'Could not load this case.');
-    }).finally(() => { if (active) setLoading(false); });
+    }).finally(() => {
+      if (active) { setSettledCaseId(caseId); setLoading(false); }
+    });
     return () => { active = false; };
   }, [accessToken, caseId, reload]);
 
   return {
     bundle: bundle?.case.id === caseId ? bundle : null,
-    loading: loading || (bundle !== null && bundle.case.id !== caseId),
+    loading: loading || settledCaseId !== caseId,
     error,
     retry: () => { setLoading(true); setError(null); setReload((value) => value + 1); },
   };

@@ -68,6 +68,34 @@ describe("PostgreSQL foundation migration and persistence invariants", () => {
     expect((await db.query("select id from artifact_reviews where artifact_id = $1", [supportId])).rows).toHaveLength(1);
     expect((await db.query("select id from audit_events where case_id = $1", [caseId])).rows).toHaveLength(1);
   });
+  it("allows requests for changes and rejection while blocking unverified approval, invalid roles and stale reviews", async () => {
+    await createArtifact();
+    await db.query("update artifact_versions set validation_status = 'needs_rule_verification' where artifact_id = $1", [supportId]);
+    const review = (decision: string, reviewerRole = "support", version = 1) => db.query(
+      "select reloop_review_artifact($1, $2::jsonb)",
+      [supportId, JSON.stringify({ version, decision, reviewerRole, comment: "Rule source needs verification." })],
+    );
+
+    await db.exec("savepoint before_blocked_approval");
+    await expect(review("approved")).rejects.toThrow(/review blocked/);
+    await db.exec("rollback to savepoint before_blocked_approval");
+
+    for (const decision of ["changes_requested", "rejected"]) {
+      await review(decision);
+      expect((await db.query<{ review_status: string }>(
+        "select review_status from artifact_versions where artifact_id = $1 and version = 1", [supportId],
+      )).rows[0].review_status).toBe(decision);
+    }
+
+    await db.exec("savepoint before_invalid_review");
+    await expect(review("rejected", "qa")).rejects.toThrow(/review role not allowed/);
+    await db.exec("rollback to savepoint before_invalid_review");
+    await expect(review("rejected", "support", 2)).rejects.toThrow(/stale version/);
+    await db.exec("rollback to savepoint before_invalid_review");
+
+    expect((await db.query("select id from artifact_reviews where artifact_id = $1", [supportId])).rows).toHaveLength(2);
+    expect((await db.query("select id from audit_events where case_id = $1", [caseId])).rows).toHaveLength(2);
+  });
   it("rejects stale revisions and rolls back invalid source writes", async () => {
     await createArtifact();
     const revision = { expectedVersion: 1, promptText: "Shorten", promptLocale: "en-US" };

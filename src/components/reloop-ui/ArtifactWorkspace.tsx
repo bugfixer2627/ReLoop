@@ -100,7 +100,7 @@ export function ArtifactWorkspace({
       {current && <div className="artifact-review"><div className="card-title-row"><span className="card-title">{chinese ? '人工审核' : 'Human review'}</span><span className={`badge ${current.reviewStatus === 'approved' ? 'badge-safe' : 'badge-review'}`}>{current.reviewStatus}</span></div><div className="review-fields"><select aria-label={chinese ? '审核决定' : 'Review decision'} value={decision} disabled={!isCurrent || busy !== null} onChange={(event) => setDecision(event.target.value as typeof decision)}><option value="approved">Approve draft</option><option value="changes_requested">Request changes</option><option value="rejected">Reject draft</option></select><input className="input" value={comment} disabled={!isCurrent || busy !== null} maxLength={2000} onChange={(event) => setComment(event.target.value)} placeholder={chinese ? '审核备注（可选）' : 'Review note (optional)'}/><button className="btn btn-soft btn-sm" type="button" disabled={!isCurrent || busy !== null} onClick={submitReview}>{busy === 'review' ? (chinese ? '正在保存…' : 'Saving…') : (chinese ? '提交审核' : 'Submit review')}</button></div></div>}
       {notice && <p className="api-notice" role="status">{notice}</p>}
       {error && <p className="api-error" role="alert">{error}</p>}
-      <div className="artifact-sources"><span>{chinese ? '关联来源' : 'Source IDs'}:</span> {latest[0]?.sourceIds.join(' · ') || (listing ? `${listing.id} · ${listing.snapshotVersion}` : '—')}</div>
+      <div className="artifact-sources"><span>{chinese ? '关联来源' : 'Source IDs'}:</span> {current?.sourceIds.join(' · ') || (listing ? `${listing.id} · ${listing.snapshotVersion}` : '—')}</div>
     </section>
   );
 }

@@ -20,7 +20,7 @@ try {
     const response = await request(path);
     const html = await response.text();
     assert.equal(response.status, 200, path);
-    assert.ok(html.includes(phrase), `Missing Chinese text on ${path}`);
+    assert.ok(html.includes(phrase), `Missing expected page content on ${path}`);
     assert.ok(!html.includes("Jasmine Li"), `Prototype identity leaked into ${path}`);
     assert.ok(!html.includes("\uFFFD"), `Broken encoding on ${path}`);
     console.log(`PASS page ${path}`);
@@ -50,7 +50,7 @@ try {
     assert.equal(body.data, null);
     assert.equal(body.error.code, "NOT_IMPLEMENTED");
   }
-  console.log(`PASS all ${endpoints.length} incomplete AI/STT/review routes explicitly return 501`);
+  console.log(`PASS all ${endpoints.length} incomplete generation/revision/STT routes explicitly return 501`);
 } catch (error) {
   console.error(`Integration smoke check failed: ${error.message}`);
   process.exitCode = 1;
