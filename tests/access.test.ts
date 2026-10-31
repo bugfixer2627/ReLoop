@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { GET, POST } from "@/app/api/access/route";
+import { checkAccess } from "@/lib/server/access";
 
 const originalToken = process.env.DEMO_ACCESS_TOKEN;
 
@@ -42,5 +43,21 @@ describe("demo access session", () => {
       method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost" }, body: JSON.stringify({ token: "wrong" }),
     }));
     expect(wrong.status).toBe(401);
+  });
+
+  it("accepts documented bearer access and local host aliases", () => {
+    process.env.DEMO_ACCESS_TOKEN = "x".repeat(32);
+    const request = new Request("http://127.0.0.1:3000/api/cases", {
+      method: "POST",
+      headers: { authorization: `Bearer ${process.env.DEMO_ACCESS_TOKEN}`, origin: "http://localhost:3000" },
+    });
+    expect(checkAccess(request)).toBeNull();
+  });
+
+  it("fails closed for production without a configured token", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.DEMO_ACCESS_TOKEN;
+    expect(checkAccess(new Request("https://demo.example/api/cases"))?.status).toBe(503);
+    vi.unstubAllEnvs();
   });
 });

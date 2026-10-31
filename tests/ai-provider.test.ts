@@ -51,6 +51,7 @@ describe("OpenAI-compatible provider adapter", () => {
       const form = init?.body as FormData;
       expect(form.get("language")).toBe("zh");
       expect(form.get("response_format")).toBe("verbose_json");
+      expect((form.get("file") as File).name).toBe("reloop-audio.webm");
       return response({ text: "请核对测试条件。", duration: 8.25 });
     });
     const result = await adapter().transcription.transcribe(new Uint8Array([1, 2, 3]), "audio/webm", "zh-CN");

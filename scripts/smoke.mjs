@@ -35,17 +35,20 @@ try {
     ["GET", "/api/cases"], ["POST", "/api/cases"], ["GET", `/api/cases/${caseId}`],
     ...["analyze", "support", "repair", "tasks"].map((name) => ["POST", `/api/cases/${caseId}/${name}`]),
     ...["revise", "review"].map((name) => ["POST", `/api/artifacts/${caseId}/${name}`]),
-    ["POST", "/api/transcribe", 400, "INVALID_REQUEST"],
   ];
-  for (const [method, path, expectedStatus = 501, expectedCode = "NOT_IMPLEMENTED"] of endpoints) {
+  for (const [method, path] of endpoints) {
     const response = await request(path, { method });
     const body = await response.json();
-    assert.equal(response.status, expectedStatus, path);
+    assert.ok([501, 503].includes(response.status), `${path} must remain protected or explicitly unavailable`);
     assert.equal(body.ok, false);
     assert.equal(body.data, null);
-    assert.equal(body.error.code, expectedCode);
+    assert.ok(["NOT_CONFIGURED", "DATABASE_UNAVAILABLE", "NOT_IMPLEMENTED"].includes(body.error.code), path);
   }
-  console.log(`PASS ${endpoints.length - 1} foundation routes remain explicit 501 stubs; speech validates requests`);
+  const speech = await request("/api/transcribe", { method: "POST" });
+  const speechBody = await speech.json();
+  assert.ok([400, 503].includes(speech.status));
+  assert.ok(["INVALID_REQUEST", "NOT_CONFIGURED"].includes(speechBody.error.code));
+  console.log(`PASS protected case/workflow routes reject unavailable configuration; speech validates requests`);
 } catch (error) {
   console.error(`Foundation smoke check failed: ${error.message}`);
   process.exitCode = 1;

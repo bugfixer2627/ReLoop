@@ -8,7 +8,7 @@ const requestTimes = new Map<string, number[]>();
 export function mutationGuard(request: Request, policy: RateLimitPolicy) {
   const origin = request.headers.get("origin");
   const expectedOrigin = new URL(request.url).origin;
-  if ((origin && origin !== expectedOrigin) || (demoTokenIsConfigured() && !origin)) {
+  if ((origin && !sameOrigin(origin, expectedOrigin)) || (demoTokenIsConfigured() && !origin)) {
     return apiFailure("UNAUTHORIZED", "This request origin is not allowed.", 403);
   }
 
@@ -30,4 +30,17 @@ export function mutationGuard(request: Request, policy: RateLimitPolicy) {
     }
   }
   return null;
+}
+
+function sameOrigin(actual: string, expected: string) {
+  try {
+    const left = new URL(actual);
+    const right = new URL(expected);
+    if (left.protocol !== right.protocol || left.port !== right.port) return false;
+    const local = new Set(["localhost", "127.0.0.1", "[::1]"]);
+    if (local.has(left.hostname) && local.has(right.hostname)) return true;
+    return left.hostname === right.hostname;
+  } catch {
+    return false;
+  }
 }

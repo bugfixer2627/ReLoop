@@ -74,6 +74,16 @@ function endpoint(baseUrl: string, path: string) {
   return `${baseUrl}/${path}`;
 }
 
+function audioExtension(mimeType: string) {
+  return ({
+    "audio/webm": "webm",
+    "audio/mp4": "mp4",
+    "audio/mpeg": "mp3",
+    "audio/wav": "wav",
+    "audio/ogg": "ogg",
+  } as Record<string, string>)[mimeType] ?? "bin";
+}
+
 function readProviderError(response: Response, fallback: ProviderErrorCode) {
   if (response.status === 429) return new ProviderError("RATE_LIMITED", 429, true);
   if (response.status === 408 || response.status === 504) return new ProviderError("MODEL_TIMEOUT", 504, true);
@@ -171,7 +181,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
   const ai: AiAdapter = {
     async extract(context): Promise<ExtractedFeedback> {
       return completeJson([
-        { role: "system", content: "Extract only the reported issue and customer claim. Return JSON with issue, customerClaim (null when absent), and unknowns. Never treat customer statements as verified product facts." },
+        { role: "system", content: "Extract only the reported issue and customer claim. Return exactly {issue:string,customerClaim:{metric:\"battery_runtime\",value:number,unit:\"hours\",qualifier:\"reported\",conditions:Record<string,string>}|null,unknowns:string[]}. Use customerClaim=null when no numeric runtime is stated. Never treat customer statements as verified product facts." },
         { role: "user", content: JSON.stringify(contextForPrompt(context)) },
       ], feedbackExtractionSchema);
     },
@@ -196,7 +206,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     async generateListing(context, platform): Promise<ArtifactContent> {
       const format = platformFormat[platform];
       return completeJson([
-        { role: "system", content: `${systemInstruction("en-US")} Draft only the ${platform} listing structure with format ${format}. Do not claim the draft is approved or publishable. For Amazon Germany use an English internal reviewer brief unless tested German generation is explicitly available. For Alibaba use B2B fields and only documented MOQ/lead-time values.` },
+        { role: "system", content: `${systemInstruction("en-US")} Draft only the ${platform} listing structure with format ${format}. Return exactly the fields required by that format: shopify_description={format,title,description,faq:string[]}; amazon_listing={format,title,bullets:string[],description,internalBrief:boolean}; alibaba_b2b={format,title,specifications:Record<string,string>,benefits:string[],moq:string|null,leadTime:string|null,claimsNotes:string[]}. Do not claim the draft is approved or publishable. For Amazon Germany use an English internal reviewer brief unless tested German generation is explicitly available. For Alibaba use B2B fields and only documented MOQ/lead-time values.` },
         { role: "user", content: JSON.stringify(contextForPrompt(context)) },
       ], artifactContentSchema).then((content) => {
         if (content.format !== format || (platform === "amazon_de" && content.format === "amazon_listing" && !content.internalBrief)) {
@@ -224,7 +234,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
       const form = new FormData();
       const bytes = new ArrayBuffer(audio.byteLength);
       new Uint8Array(bytes).set(audio);
-      form.set("file", new File([bytes], "reloop-audio", { type: mimeType }));
+      form.set("file", new File([bytes], `reloop-audio.${audioExtension(mimeType)}`, { type: mimeType }));
       form.set("model", configured.model || "whisper-1");
       form.set("language", locale === "zh-CN" ? "zh" : "en");
       form.set("response_format", "verbose_json");

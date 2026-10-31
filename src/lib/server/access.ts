@@ -26,7 +26,7 @@ export function readDemoAccessToken(request: Request) {
 }
 
 export function demoTokenIsConfigured() {
-  return Boolean(process.env.DEMO_ACCESS_TOKEN);
+  return Boolean(process.env.DEMO_ACCESS_TOKEN) || process.env.NODE_ENV === "production";
 }
 
 export function demoTokenIsValid(token: string) {
@@ -37,7 +37,11 @@ export function demoTokenIsValid(token: string) {
 
 export function demoAccessFailure(request: Request) {
   const expected = process.env.DEMO_ACCESS_TOKEN;
-  if (!expected) return null;
+  if (!expected) {
+    return process.env.NODE_ENV === "production"
+      ? apiFailure("NOT_CONFIGURED", "Demo access is not configured.", 503)
+      : null;
+  }
   if (expected.length < 32) {
     return apiFailure("NOT_CONFIGURED", "Demo access is misconfigured.", 503);
   }

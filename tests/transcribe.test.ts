@@ -19,6 +19,28 @@ function request(locale = "en-US", mimeType = "audio/webm", bytes = new Uint8Arr
   });
 }
 
+function wav(seconds: number) {
+  const sampleRate = 1000;
+  const channels = 1;
+  const bits = 8;
+  const dataSize = sampleRate * seconds;
+  const bytes = new Uint8Array(44 + dataSize);
+  const view = new DataView(bytes.buffer);
+  for (const [offset, value] of [[0, "RIFF"], [8, "WAVE"], [12, "fmt "], [36, "data"]] as const) {
+    for (let index = 0; index < value.length; index += 1) bytes[offset + index] = value.charCodeAt(index);
+  }
+  view.setUint32(4, 36 + dataSize, true);
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, bits, true);
+  view.setUint32(40, dataSize, true);
+  return bytes;
+}
+
 describe("POST /api/transcribe", () => {
   beforeEach(() => {
     getTranscriptionAdapter.mockReset();
@@ -58,6 +80,13 @@ describe("POST /api/transcribe", () => {
     const response = await POST(request());
     expect(response.status).toBe(413);
     expect(await response.json()).toMatchObject({ ok: false, error: { code: "AUDIO_TOO_LARGE" } });
+  });
+
+  it("rejects an oversized WAV before calling a provider", async () => {
+    getTranscriptionAdapter.mockReturnValue({ transcribe: vi.fn() });
+    const response = await POST(request("en-US", "audio/wav", wav(61)));
+    expect(response.status).toBe(413);
+    expect(getTranscriptionAdapter).not.toHaveBeenCalled();
   });
 
   it("does not accept a transcript when speech service credentials are missing", async () => {

@@ -15,6 +15,31 @@ export const dynamic = "force-dynamic";
 
 const MAX_MULTIPART_OVERHEAD = 64 * 1024;
 
+function wavDurationSeconds(bytes: Uint8Array) {
+  if (bytes.byteLength < 44 || String.fromCharCode(...bytes.subarray(0, 4)) !== "RIFF" || String.fromCharCode(...bytes.subarray(8, 12)) !== "WAVE") return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 12;
+  let byteRate = 0;
+  let dataBytes = 0;
+  while (offset + 8 <= view.byteLength) {
+    const id = String.fromCharCode(...bytes.subarray(offset, offset + 4));
+    const size = view.getUint32(offset + 4, true);
+    const next = offset + 8 + size + (size % 2);
+    if (next > view.byteLength) return null;
+    if (id === "fmt " && size >= 16) {
+      const channels = view.getUint16(offset + 10, true);
+      const sampleRate = view.getUint32(offset + 12, true);
+      const bitsPerSample = view.getUint16(offset + 22, true);
+      if (channels > 0 && sampleRate > 0 && bitsPerSample > 0) byteRate = sampleRate * channels * (bitsPerSample / 8);
+    } else if (id === "data") {
+      dataBytes = size;
+      break;
+    }
+    offset = next;
+  }
+  return byteRate > 0 && dataBytes > 0 ? dataBytes / byteRate : null;
+}
+
 async function readBoundedBody(request: Request, maxBytes: number) {
   if (!request.body) return undefined;
   const reader = request.body.getReader();
@@ -95,6 +120,13 @@ export async function POST(request: Request) {
   const mimeType = audio.type.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   if (!(AUDIO_MIME_TYPES as readonly string[]).includes(mimeType)) {
     return apiFailure("UNSUPPORTED_AUDIO", "Use WebM, MP4, MP3, WAV or Ogg audio.", 415);
+  }
+
+  if (mimeType === "audio/wav") {
+    const localDuration = wavDurationSeconds(new Uint8Array(await audio.arrayBuffer()));
+    if (localDuration !== null && localDuration > MAX_AUDIO_SECONDS) {
+      return apiFailure("AUDIO_TOO_LARGE", "Audio must be no longer than 60 seconds.", 413);
+    }
   }
 
   const transcription = getTranscriptionAdapter();

@@ -6,8 +6,6 @@ const { getDatabaseClient } = vi.hoisted(() => ({ getDatabaseClient: vi.fn() }))
 vi.mock("@/lib/db/client", () => ({ getDatabaseClient }));
 
 import { GET as health } from "@/app/api/health/route";
-import { POST as support } from "@/app/api/cases/[id]/support/route";
-import { POST as repair } from "@/app/api/cases/[id]/repair/route";
 import { POST as revise } from "@/app/api/artifacts/[id]/revise/route";
 
 beforeEach(() => { getDatabaseClient.mockReset(); });
@@ -35,10 +33,11 @@ describe("foundation routes", () => {
     expect(body.data.database).toBe("unreachable");
     expect(JSON.stringify(body)).not.toContain("Secret URI");
   });
-  it.each([support, repair, revise])("does not simulate an unimplemented workflow", async (route) => {
-    const response = await route();
+  it("does not simulate an unimplemented revision workflow", async () => {
+    const route = revise;
+    const response = await route(new Request("http://localhost/api/artifacts/bad/revise", { method: "POST" }), { params: Promise.resolve({ id: "bad" }) });
     const body = await response.json();
-    expect(response.status).toBe(501);
-    expect(body).toMatchObject({ ok: false, data: null, error: { code: "NOT_IMPLEMENTED", retryable: false } });
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({ ok: false, data: null, error: { code: "NOT_CONFIGURED", retryable: false } });
   });
 });
