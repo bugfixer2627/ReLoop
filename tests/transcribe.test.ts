@@ -11,13 +11,16 @@ vi.mock("@/lib/ai/openai-compatible", async (importOriginal) => ({
 import { POST } from "@/app/api/transcribe/route";
 import { ProviderError } from "@/lib/ai/openai-compatible";
 let requestNumber = 0;
+const originalServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function request(locale = "en-US", mimeType = "audio/webm", bytes = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0])) {
+const testToken = "transcription-test-token".padEnd(40, "x");
+
+function request(locale = "en-US", mimeType = "audio/webm", bytes = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0]), authenticated = true) {
   const form = new FormData();
   form.set("locale", locale);
   form.set("audio", new File([bytes], "sample.webm", { type: mimeType }));
   return new Request("http://localhost/api/transcribe", {
-    method: "POST", headers: { Origin: "http://localhost", "x-real-ip": String(++requestNumber) }, body: form,
+    method: "POST", headers: { Origin: "http://localhost", "x-real-ip": String(++requestNumber), ...(authenticated ? { authorization: `Bearer ${testToken}` } : {}) }, body: form,
   });
 }
 
@@ -44,10 +47,14 @@ function wav(seconds: number) {
 }
 
 describe("POST /api/transcribe", () => {
-  afterEach(() => { delete process.env.DEMO_ACCESS_TOKEN; });
+  afterEach(() => {
+    delete process.env.DEMO_ACCESS_TOKEN;
+    if (originalServiceKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceKey;
+  });
   beforeEach(() => {
     getTranscriptionAdapter.mockReset();
-    delete process.env.DEMO_ACCESS_TOKEN;
+    process.env.DEMO_ACCESS_TOKEN = testToken;
   });
 
   it("returns an editable Chinese transcript requiring confirmation", async () => {
@@ -73,17 +80,19 @@ describe("POST /api/transcribe", () => {
     expect(getTranscriptionAdapter).not.toHaveBeenCalled();
   });
 
-  it("keeps the existing authenticated cookie flow", async () => {
-    process.env.DEMO_ACCESS_TOKEN = "c".repeat(32);
+  it("accepts the signed email-auth session cookie", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "transcription-test-service-key";
     const audioRequest = request();
-    audioRequest.headers.set("cookie", "reloop_demo_access=" + process.env.DEMO_ACCESS_TOKEN);
+    audioRequest.headers.delete("authorization");
+    const { createAuthSession, AUTH_SESSION_COOKIE } = await import("@/lib/server/access");
+    audioRequest.headers.set("cookie", `${AUTH_SESSION_COOKIE}=${createAuthSession("00000000-0000-4000-8000-000000000001")}`);
     getTranscriptionAdapter.mockReturnValue({ transcribe: vi.fn().mockResolvedValue({ text: "Keep test conditions.", locale: "en-US", durationSeconds: 3 }) });
     expect((await POST(audioRequest)).status).toBe(200);
   });
 
   it("rejects an empty request as invalid input", async () => {
     const response = await POST(new Request("http://localhost/api/transcribe", {
-      method: "POST", headers: { Origin: "http://localhost" },
+      method: "POST", headers: { Origin: "http://localhost", authorization: `Bearer ${testToken}` },
     }));
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ ok: false, error: { code: "INVALID_REQUEST" } });
@@ -113,8 +122,8 @@ describe("POST /api/transcribe", () => {
   });
 
   it("requires the configured demo access cookie", async () => {
-    process.env.DEMO_ACCESS_TOKEN = "a".repeat(32);
-    const response = await POST(request());
+    process.env.DEMO_ACCESS_TOKEN = testToken;
+    const response = await POST(request("en-US", "audio/webm", undefined, false));
     expect(response.status).toBe(401);
     expect(await response.json()).toMatchObject({ ok: false, error: { code: "UNAUTHORIZED" } });
   });

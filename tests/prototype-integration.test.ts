@@ -14,11 +14,11 @@ import { SourceBrowser } from '@/components/reloop-ui/SourceBrowser';
 vi.mock('next/navigation', () => ({ usePathname: () => '/cases', useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock('@/components/reloop-ui/WorkspaceProviders', () => ({ useWorkspace: () => ({ locale: 'en-US', accessToken: 'test-token' }) }));
 
-const rows = [demoBundle.case, { ...demoBundle.case, id: '00000000-0000-4000-8000-000000000102', channel: 'amazon_de' as const, feedbackText: '不同的反馈', status: 'closed' as const, createdAt: '2026-10-30T23:00:00Z' }];
+const rows = [demoBundle.case, { ...demoBundle.case, id: '00000000-0000-4000-8000-000000000102', channel: 'amazon_de' as const, feedbackText: '不同的反馈', status: 'clear' as const, createdAt: '2026-10-30T23:00:00Z' }];
 
 describe('case management data and exports', () => {
   it('combines query, channel and status without changing source records', () => {
-    expect(filterCases(rows, { query: '不同', channel: 'amazon_de', status: 'closed' }).map((r) => r.id)).toEqual([rows[1].id]);
+    expect(filterCases(rows, { query: '不同', channel: 'amazon_de', status: 'clear' }).map((r) => r.id)).toEqual([rows[1].id]);
     expect(filterCases(rows, { query: '不同', status: 'open' })).toEqual([]);
     expect(rows[0]).toEqual(demoBundle.case);
     expect(filterCases(rows, { sort: 'oldest' })[0].id).toBe(rows[1].id);

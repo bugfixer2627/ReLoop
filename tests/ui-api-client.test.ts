@@ -17,7 +17,7 @@ describe('typed UI API adapter', () => {
     expect(options.signal).toBe(controller.signal);
     expect((options.body as FormData).get('audio')).toMatchObject({ name: 'instruction.' + extension });
   });
-  it('loads the real case-list contract with a bearer token and no caching', async () => {
+  it('loads the real case-list contract with a same-origin session cookie and no caching', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       ok: true, data: { cases: [demoBundle.case] }, error: null, requestId,
     }), { status: 200, headers: { 'content-type': 'application/json' } }));
@@ -27,7 +27,7 @@ describe('typed UI API adapter', () => {
 
     expect(result).toEqual([demoBundle.case]);
     expect(fetch).toHaveBeenCalledWith('/api/cases', expect.objectContaining({
-      cache: 'no-store', headers: expect.objectContaining({ Authorization: `Bearer ${token}` }),
+      cache: 'no-store', credentials: 'same-origin', headers: expect.not.objectContaining({ Authorization: expect.anything() }),
     }));
   });
 
@@ -98,7 +98,7 @@ describe('typed UI API adapter', () => {
     const audio = new Blob(['synthetic binary fixture'], { type: 'audio/webm' });
     await expect(transcribeAudio(token, audio, 'zh-CN')).rejects.toMatchObject({ status: 501, code: 'NOT_IMPLEMENTED' });
     expect(fetch).toHaveBeenCalledWith('/api/transcribe', expect.objectContaining({
-      method: 'POST', headers: expect.objectContaining({ Authorization: `Bearer ${token}` }),
+      method: 'POST', credentials: 'same-origin', headers: expect.not.objectContaining({ Authorization: expect.anything() }),
     }));
   });
 });

@@ -3,9 +3,6 @@ import { upsertTaskRequestSchema } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
 import { getCaseBundle } from "@/lib/db/cases";
 import { upsertTask } from "@/lib/db/workflows";
-import { auditEventSchema, taskSchema, upsertTaskRequestSchema } from "@/lib/contracts";
-import { getDatabaseClient } from "@/lib/db/client";
-import { mapRow } from "@/lib/db/cases";
 import { checkAccess } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 

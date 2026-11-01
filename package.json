@@ -21,7 +21,8 @@
     "db:generate-seed": "node scripts/generate-seed.mjs",
     "db:apply": "node scripts/database.mjs apply",
     "db:seed": "node scripts/database.mjs seed",
-    "db:reset": "node scripts/database.mjs reset --confirm-demo-reset"
+    "db:reset": "node scripts/database.mjs reset --confirm-demo-reset",
+    "auth:create-demo-user": "node scripts/create-demo-user.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  artifactSchema, caseBundleSchema, createCaseRequestSchema, findingSchema,
+  artifactSchema, caseBundleSchema, caseSchema, createCaseRequestSchema, findingSchema,
   generationResponseSchema, healthResponseSchema, listingSchema, responseSchema,
   revisionEventSchema, reviseArtifactRequestSchema, reviewArtifactRequestSchema,
   ruleSchema, transcriptionResponseSchema,
@@ -29,6 +29,11 @@ describe("shared team contracts", () => {
   });
   it("requires synthetic inputs for this demo-only MVP", () => {
     expect(createCaseRequestSchema.safeParse({ ...request, synthetic: false }).success).toBe(false);
+  });
+  it("accepts the current case statuses and rejects removed statuses", () => {
+    expect(caseSchema.safeParse({ ...demoBundle.case, status: "clear" }).success).toBe(true);
+    expect(caseSchema.safeParse({ ...demoBundle.case, status: "investigating" }).success).toBe(false);
+    expect(caseSchema.safeParse({ ...demoBundle.case, status: "closed" }).success).toBe(false);
   });
   it("keeps the original fixture free of fabricated generation or reviews", () => {
     expect(caseBundleSchema.parse(demoBundle).artifacts).toEqual([]);

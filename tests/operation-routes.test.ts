@@ -13,11 +13,12 @@ import { POST as tasks } from "@/app/api/cases/[id]/tasks/route";
 import { POST as review } from "@/app/api/artifacts/[id]/review/route";
 
 const context = { params: Promise.resolve({ id: demoBundle.case.id }) };
-function req(body: unknown, token = "test-secret") {
+const testToken = "operation-route-test-secret".padEnd(40, "x");
+function req(body: unknown, token = testToken) {
   return new Request("http://localhost/api/test", { method: "POST", headers: { authorization: "Bearer " + token }, body: JSON.stringify(body) });
 }
 beforeEach(() => {
-  vi.resetAllMocks(); process.env.DEMO_ACCESS_TOKEN = "test-secret";
+  vi.resetAllMocks(); process.env.DEMO_ACCESS_TOKEN = testToken;
   mocks.client.mockReturnValue({ rpc: mocks.rpc });
   mocks.bundle.mockResolvedValue(demoBundle);
   mocks.rpc.mockResolvedValue({ error: null, data: null });

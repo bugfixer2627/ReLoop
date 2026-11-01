@@ -20,7 +20,9 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires reachable Supabase and a `DEMO_ACCESS_TOKEN` of at least 32 characters; enter it on `/login`. The frontend keeps the token in memory and requires login again after reload. The backend also supports an HttpOnly cookie through `/api/access`. Health checks database availability; AI/speech configured states indicate configuration presence, not a successful provider request.
+Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access uses Supabase Auth email/password credentials entered on `/login`; the server issues a signed HttpOnly cookie. Auth users are provisioned by an administrator; public registration is disabled. Health checks database availability; AI/speech configured states indicate configuration presence, not a successful provider request.
+
+For a synthetic demo account, run `npm run auth:create-demo-user`. It creates an email-confirmed Supabase Auth user with a random `@example.com` address and password and prints the credentials once. That address cannot receive verification or password-reset mail.
 
 If your network requires an HTTP proxy, set `HTTPS_PROXY`, `NODE_USE_ENV_PROXY=1`, and `NO_PROXY=localhost,127.0.0.1` in `.env.local`; the dev launcher passes these settings to Node. To access the dev server through a local network hostname or IP, add it to `NO_PROXY` and set `RELOOP_DEV_ORIGINS` to that hostname or IP (comma-separated for multiple hosts). Restart the dev server after changing proxy settings. Use `http://localhost:3000` when working on the same computer.
 
@@ -43,7 +45,7 @@ npm ci
 
 ## Backend boundary
 
-Case list/create/load, evidence-only analysis, task and review routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. Apply the new database migration before using them. No login/session UI is implemented yet. **AI generation, legal/platform rule checks, transcription and revision generation are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**; revision persistence is available for future integration. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
+Case list/create/load and workflow routes use Supabase. Browser requests use the signed session cookie; a legacy bearer token may be configured for trusted API clients, but is not offered as a login method. Create an administrator-provisioned Auth user with `npm run auth:create-demo-user`; the command prints the one-time credentials. **AI generation, legal/platform rule checks, transcription and revision generation status is described in the integration report.** Nothing is sent or published externally.
 
 The tracked `.env.example` documents the exact configuration keys. Copy it only if `.env.local` does not already exist. Never commit credentials or copy provider keys into frontend configuration. The separate `feat/backend` branch remains unmerged pending migration/RPC agreement.
 
@@ -59,7 +61,7 @@ The production app's `npm run check` includes lint, type generation/TypeScript, 
 
 ## Configure a dedicated demo database
 
-Use `.env.example` for exact names. `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `DEMO_ACCESS_TOKEN` are required for protected workflows. `DATABASE_URL` is used by CLI operations; LLM/speech variables enable their adapters. Run `node scripts/verify-services.mjs` for a sanitized read-only check. No browser Supabase client is used.
+Use `.env.example` for exact names. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are required for Supabase Auth and protected workflows. `DATABASE_URL` is used by CLI operations; LLM/speech variables enable their adapters. Run `node scripts/verify-services.mjs` for a sanitized read-only check. No browser Supabase client or service-role key is exposed.
 
 **Do not run hosted migration, seed or reset commands below until the owner approves the exact isolated development database and migration history.**
 

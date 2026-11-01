@@ -23,9 +23,9 @@ export default function DashboardClient({ initialQuery, selectionTarget }: { ini
   const metricValue = (value: number) => loading ? '—' : error ? (zh ? '未知' : 'Unknown') : new Intl.NumberFormat(locale).format(value);
   const metrics = [
     [zh ? '全部案例' : 'All cases', cases.length],
-    [zh ? '处理中' : 'In progress', cases.filter((c) => c.status === 'open' || c.status === 'investigating').length],
+    [zh ? '处理中' : 'In progress', cases.filter((c) => c.status === 'open').length],
     [zh ? '等待审核' : 'Pending review', cases.filter((c) => c.status === 'pending_review').length],
-    [zh ? '已关闭' : 'Closed', cases.filter((c) => c.status === 'closed').length],
+    [zh ? '已解决' : 'Clear', cases.filter((c) => c.status === 'clear').length],
   ] as const;
   return <WorkspaceShell title={title} searchQuery={initialQuery} selectionTarget={selectionTarget}><div className="page">
     <PageHeading title={title} description={selectionTarget ? (zh ? '打开下方已保存案例，或新建案例。' : 'Open a saved case below, or create a new case.') : (zh ? '从客户反馈到证据核验，让每一步都有据可查。' : 'A clearer picture of the customer cases that need your attention.')} actions={<>{!selectionTarget && <button className="btn btn-soft btn-sm" disabled aria-describedby="report-unavailable">{zh ? '导出报告' : 'Export report'}</button>}<Link className="btn btn-primary btn-sm" href="/feedback">{zh ? '新建案例' : 'New case'}</Link></>}/>

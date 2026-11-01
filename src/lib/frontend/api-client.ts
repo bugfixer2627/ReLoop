@@ -31,9 +31,9 @@ async function request<T>(path: string, token: string, schema: z.ZodType<Success
     response = await fetch(path, {
       ...init,
       cache: 'no-store',
+      credentials: token ? 'same-origin' : 'omit',
       headers: {
         Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
         ...(init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...init.headers,
       },

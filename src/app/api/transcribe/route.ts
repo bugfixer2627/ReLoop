@@ -7,7 +7,7 @@ import {
 } from "@/lib/contracts";
 import { getTranscriptionAdapter, ProviderError } from "@/lib/ai/openai-compatible";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
-import { demoAccessFailure } from "@/lib/server/access";
+import { checkAccess } from "@/lib/server/access";
 import { mutationGuard } from "@/lib/server/request-guards";
 
 export const runtime = "nodejs";
@@ -86,7 +86,7 @@ function providerFailure(error: ProviderError) {
 export async function POST(request: Request) {
   const rejected = mutationGuard(request, { name: "transcribe", limit: 10, windowMs: 60_000 });
   if (rejected) return rejected;
-  const accessFailure = demoAccessFailure(request);
+  const accessFailure = checkAccess(request);
   if (accessFailure) return accessFailure;
 
   const declaredLength = request.headers.get("content-length");

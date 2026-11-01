@@ -2,7 +2,7 @@
 
 **Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case list/create/get, evidence-only analysis, task, and review routes are implemented. Support, repair, revision generation, and transcription routes remain HTTP 501.
 
-Protected routes accept `Authorization: Bearer <DEMO_ACCESS_TOKEN>` or the HttpOnly cookie issued by `/api/access`. The token requires at least 32 characters. The login UI uses a user-entered token in memory; never bake it into bundles. Transcription accepts both authentication forms. Cross-origin writes are rejected; cookie mutations require Origin while authenticated bearer CLI uploads may omit it.
+Browser sign-in uses `POST /api/auth/login` with `{email,password}`. Supabase Auth verifies the credentials; the server issues a signed HttpOnly, SameSite cookie with an eight-hour lifetime. `GET /api/auth/session` reports whether it is valid and `POST /api/auth/logout` clears it. Public registration is disabled; users are provisioned by a Supabase administrator. Browser mutations require a same-origin `Origin` header. A configured `DEMO_ACCESS_TOKEN` remains available only for trusted API clients during migration and is not shown in the login UI.
 
 ## Envelopes
 

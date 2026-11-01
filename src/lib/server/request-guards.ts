@@ -1,6 +1,7 @@
 import "server-only";
 import { apiFailure } from "./http";
-import { demoTokenIsConfigured, demoTokenIsValid } from "./access";
+import { demoTokenIsValid } from "./access";
+import { isAllowedOrigin } from "./origin";
 
 type RateLimitPolicy = { name: string; limit: number; windowMs: number };
 const requestTimes = new Map<string, number[]>();
@@ -8,10 +9,9 @@ const requestTimes = new Map<string, number[]>();
 export function mutationGuard(request: Request, policy: RateLimitPolicy) {
   const origin = request.headers.get("origin");
   const expectedOrigin = new URL(request.url).origin;
-  // Non-browser API clients may omit Origin when using explicit bearer auth.
-  // Cookie-based mutations still require Origin to protect against CSRF.
+  // Browser mutations must prove their origin; CLI clients may use bearer auth.
   const bearer = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "")?.[1]?.trim() ?? "";
-  if ((origin && !sameOrigin(origin, expectedOrigin)) || (demoTokenIsConfigured() && !origin && !demoTokenIsValid(bearer))) {
+  if ((origin && !isAllowedOrigin(origin, expectedOrigin)) || (!origin && !demoTokenIsValid(bearer))) {
     return apiFailure("UNAUTHORIZED", "This request origin is not allowed.", 403);
   }
 
@@ -33,17 +33,4 @@ export function mutationGuard(request: Request, policy: RateLimitPolicy) {
     }
   }
   return null;
-}
-
-function sameOrigin(actual: string, expected: string) {
-  try {
-    const left = new URL(actual);
-    const right = new URL(expected);
-    if (left.protocol !== right.protocol || left.port !== right.port) return false;
-    const local = new Set(["localhost", "127.0.0.1", "[::1]"]);
-    if (local.has(left.hostname) && local.has(right.hostname)) return true;
-    return left.hostname === right.hostname;
-  } catch {
-    return false;
-  }
 }

@@ -6,6 +6,7 @@ export type UiLocale = 'en-US' | 'zh-CN';
 
 type WorkspaceContextValue = {
   accessToken: string | null;
+  authReady: boolean;
   setAccessToken: (token: string) => void;
   clearAccessToken: () => void;
   locale: UiLocale;
@@ -41,18 +42,29 @@ function savePreferences(value: { locale: UiLocale; compact: boolean }) {
 
 export function WorkspaceProviders({ children }: { children: ReactNode }) {
   const [accessToken, setToken] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const rawPreferences = useSyncExternalStore(subscribePreferences, preferenceSnapshot, () => '');
   const { locale, compact } = useMemo(() => readPreferences(rawPreferences), [rawPreferences]);
   useEffect(() => { document.documentElement.lang = locale; }, [locale]);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/session', { cache: 'no-store', credentials: 'same-origin' })
+      .then((response) => response.json())
+      .then((body) => { if (active && body?.ok) setToken(body.data.authenticated ? 'session' : null); })
+      .catch(() => { if (active) setToken(null); })
+      .finally(() => { if (active) setAuthReady(true); });
+    return () => { active = false; };
+  }, []);
   const value = useMemo(() => ({
     accessToken,
-    setAccessToken: (token: string) => setToken(token),
+    authReady,
+    setAccessToken: (token: string) => setToken(token ? 'session' : null),
     clearAccessToken: () => setToken(null),
     locale,
     toggleLocale: () => savePreferences({ locale: locale === 'en-US' ? 'zh-CN' : 'en-US', compact }),
     compact,
     toggleCompact: () => savePreferences({ locale, compact: !compact }),
-  }), [accessToken, locale, compact]);
+  }), [accessToken, authReady, locale, compact]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

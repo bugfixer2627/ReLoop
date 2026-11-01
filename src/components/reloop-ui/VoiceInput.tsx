@@ -28,7 +28,6 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
   const mountedRef = useRef(true);
   const pendingRef = useRef(false);
   const uploadRef = useRef<AbortController | null>(null);
-  const transcriptId = useId();
   const chinese = locale === 'zh-CN';
 
   useEffect(() => {
@@ -115,7 +114,7 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
         if (!accessToken) return;
         const controller = new AbortController();
         uploadRef.current = controller;
-        transcribeAudio(accessToken, audio, locale, controller.signal).then((result) => {
+        transcribeAudio(accessToken, audio, inputLocale ?? locale, controller.signal).then((result) => {
           if (!mountedRef.current || controller.signal.aborted) return;
           setTranscript(result.text);
           setState('preview');

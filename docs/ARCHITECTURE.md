@@ -8,7 +8,7 @@ Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and P
 
 ```mermaid
 flowchart TD
-    A[Chinese / English input or confirmed transcript] --> B[Validate request and demo access]
+    A[Chinese / English input or confirmed transcript] --> B[Validate request and signed workspace session]
     B --> C[Persist shared caseId]
     C --> D[Retrieve product, evidence, three snapshots, policy and rules]
     D --> E[Real server-side AI + Zod validation]
@@ -45,7 +45,7 @@ Generate/validate candidate, lock artifact, recheck `expectedVersion`, insert co
 
 - Service-role/provider keys stay server-only. No `NEXT_PUBLIC_*` credential is needed.
 - All business tables have RLS enabled and grants to anonymous/authenticated/PUBLIC revoked. Trusted server uses service role.
-- Case routes require a server-configured `DEMO_ACCESS_TOKEN` as a bearer token and reject cross-origin mutations. A secure login/session UI and provider-call rate limiting are still needed before shared deployment. Never embed the token in frontend code. A role switch is presentation context, not authorization.
+- Browser case routes require a signed HttpOnly workspace session issued after Supabase Auth email/password verification and reject cross-origin mutations. Public registration is disabled; users are provisioned by an administrator. A legacy bearer token can remain configured for trusted API clients but is not part of browser sign-in. A role switch is presentation context, not authorization.
 - Public health returns availability enums only; configured DB query has a five-second timeout. No row content, credentials or provider errors are returned.
 - Speech processing is temporary/in-memory, with no raw audio retention. Confirmed editable transcript enters the existing text workflow.
 - Migration/reset is CLI-only against a dedicated demo project; no public reset route.

@@ -14,6 +14,8 @@ try {
   if (error.code !== "ENOENT") throw error;
 }
 const next = new URL("../node_modules/next/dist/bin/next", import.meta.url);
-const child = spawn(process.execPath, [fileURLToPath(next), "dev", ...process.argv.slice(2)], { env, stdio: "inherit" });
+const proxyEnabled = env.NODE_USE_ENV_PROXY === "1" && process.allowedNodeEnvironmentFlags.has("--use-env-proxy");
+const args = [...(proxyEnabled ? ["--use-env-proxy"] : []), fileURLToPath(next), "dev", ...process.argv.slice(2)];
+const child = spawn(process.execPath, args, { env, stdio: "inherit" });
 child.on("error", (error) => { console.error(error.message); process.exitCode = 1; });
 child.on("exit", (code, signal) => { if (signal) process.kill(process.pid, signal); else process.exitCode = code ?? 1; });
