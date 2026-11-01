@@ -1,15 +1,10 @@
 import { readFile, readdir } from "node:fs/promises";
-import { parseEnv } from "node:util";
 import { createHash } from "node:crypto";
 import pg from "pg";
+import { loadProjectEnv } from "./load-env.mjs";
+import { postgresConfig } from "./postgres-config.mjs";
 
-// Node >=22: load only missing variables, never overwrite process-level secrets.
-try {
-  const local = parseEnv(await readFile(new URL("../.env.local", import.meta.url), "utf8"));
-  for (const [name, value] of Object.entries(local)) process.env[name] ??= value;
-} catch (error) {
-  if (error.code !== "ENOENT") throw new Error("Unable to read .env.local.");
-}
+loadProjectEnv();
 
 const command = process.argv[2];
 if (!["apply", "seed", "reset"].includes(command)) {
@@ -25,8 +20,9 @@ if (command === "reset" && !process.argv.includes("--confirm-demo-reset")) {
   process.exit(1);
 }
 
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 10000 });
+let client;
 try {
+  client = new pg.Client(await postgresConfig(process.env));
   await client.connect();
   await client.query("begin");
   // Serialize apply/seed/reset invocations without a separate migration service.
@@ -59,9 +55,9 @@ try {
   console.log(`Database ${command} completed. Synthetic merchant fixture only.`);
 } catch {
   // Provider/driver errors can contain connection URIs or SQL with data; do not print them.
-  await client.query("rollback").catch(() => {});
+  await client?.query("rollback").catch(() => {});
   console.error(`Database ${command} failed; transaction rolled back. Check connectivity, migration history and Supabase SQL logs. No connection details are printed.`);
   process.exitCode = 1;
 } finally {
-  await client.end().catch(() => {});
+  await client?.end().catch(() => {});
 }

@@ -54,6 +54,13 @@ describe("demo access session", () => {
     expect(checkAccess(request)).toBeNull();
   });
 
+  it("requires Origin for cookie mutations while accepting explicit bearer CLI access", () => {
+    process.env.DEMO_ACCESS_TOKEN = "x".repeat(32);
+    const url = "http://localhost/api/cases";
+    expect(checkAccess(new Request(url, { method: "POST", headers: { cookie: "reloop_demo_access=" + process.env.DEMO_ACCESS_TOKEN } }))?.status).toBe(403);
+    expect(checkAccess(new Request(url, { method: "POST", headers: { authorization: "Bearer " + process.env.DEMO_ACCESS_TOKEN } }))).toBeNull();
+  });
+
   it("fails closed for production without a configured token", () => {
     vi.stubEnv("NODE_ENV", "production");
     delete process.env.DEMO_ACCESS_TOKEN;

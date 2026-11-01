@@ -72,7 +72,7 @@ export function checkAccess(request: Request) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     const origin = request.headers.get("origin");
     const expectedOrigin = new URL(request.url).origin;
-    if (origin && !sameLocalOrigin(origin, expectedOrigin)) {
+    if ((origin && !sameLocalOrigin(origin, expectedOrigin)) || (!origin && !bearerToken(request))) {
       return apiFailure("UNAUTHORIZED", "This request origin is not allowed.", 403);
     }
   }
