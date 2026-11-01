@@ -1,6 +1,6 @@
-# Shared API contract v1 — foundation handoff
+# Shared API contract v1
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case list/create/get, evidence-only analysis, task, and review routes are implemented. Support, repair, revision generation, and transcription routes remain HTTP 501.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require shared agreement. All listed routes are implemented. AI requires a configured compatible chat service and matching database RPCs; backend transcription requires a separately supported audio service. Missing configuration returns 503, not an invented result. See H18_H24_DELIVERY.md for the tested boundaries.
 
 Browser sign-in uses `POST /api/auth/login` with `{email,password}`. Supabase Auth verifies the credentials; the server issues a signed HttpOnly, SameSite cookie with an eight-hour lifetime. `GET /api/auth/session` reports whether it is valid and `POST /api/auth/logout` clears it. Public registration is disabled; users are provisioned by a Supabase administrator. Browser mutations require a same-origin `Origin` header. A configured `DEMO_ACCESS_TOKEN` remains available only for trusted API clients during migration and is not shown in the login UI.
 
@@ -59,7 +59,7 @@ Artifact identity: `{id,caseId,kind,platform,market,segment,latestVersion}`. Ver
 
 Content discriminants: `investigation_summary`, `support_reply`, `shopify_description`, `amazon_listing`, `alibaba_b2b`. Validate the content **and matching artifact context**. Alibaba cannot receive a Shopify description. English Amazon output requires `internalBrief:true`; German can only be enabled after tests.
 
-Analyze currently saves deterministic battery-runtime evidence findings and returns no summary artifact. It does not yet perform AI extraction, customer-observation analysis, or legal/platform checks. Support and repair remain unimplemented. Check source IDs/versions against retrieved context. Repeated generation requests must not create duplicate initial artifacts; coordinate transaction/idempotency behavior before implementation.
+Analyze saves Person 3's deterministic evidence findings, then performs structured AI extraction and merchant-summary generation. Support generates an English reply; repair generates distinct Shopify, Amazon and Alibaba artifacts using the same case. Existing initial artifacts are reused on retry. Output/source context is validated before writes. Law/platform records produce advisory verification findings; no substantive legal evaluation is claimed.
 
 ### Revise both artifact kinds
 
@@ -69,7 +69,7 @@ Analyze currently saves deterministic battery-runtime evidence findings and retu
 
 Check expected head; generate/validate; lock and recheck; atomically save next version, new findings, revision and audit, then advance head. Stale edits return 409. Timeout/invalid output leaves old history intact. New versions start unapproved. Preserve old findings/reviews.
 
-The database migration provides `reloop_save_revision` for the atomic write; the HTTP revision route remains 501 until a provider and fresh output checks are integrated. Trusted server code must validate the content format, source IDs and findings before invoking it.
+The revision route performs real generation and fresh deterministic checks, then calls the atomic workflow RPC. On PostgREST `PGRST202` only, application code supports Person 3's `reloop_save_revision` signature. Semantic/network failures never trigger fallback writes. Content format, version and source context remain validated.
 
 ### Review exact version
 
@@ -96,3 +96,7 @@ Multipart `audio` binary and `locale` (`zh-CN`/`en-US`). Maximum **10 MiB / 60 s
 ```
 
 Preview/edit transcript and require confirmation before case/revision submission. Cancel discards recording. Do not retain raw audio or log private transcripts. Permission denial, unavailable microphone, unsupported browser, upload/transcription failures and empty speech must leave typing usable. Microphone access needs HTTPS or localhost.
+
+Browser SpeechRecognition is an explicit alternative selected in the existing voice control. It does not call `/api/transcribe`; its vendor may process audio remotely. It supplies text through the same edit/confirm flow. No backend credentials are sent to the browser. Recognition support and service availability vary; selecting `zh-CN`/`en-US` does not prove recognition quality.
+
+The configured backend can independently use the included loopback CPU Whisper service through the same compatible multipart protocol. `npm run dev:local-stt`/`start:local-stt` supplies temporary server-side STT settings, preserving all LLM configuration and `.env.local`. Local inference validates decoded duration and rejects silence. See VOICE_SETUP.md for the actual-audio acceptance boundaries and optional external service requirements.

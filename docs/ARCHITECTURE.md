@@ -2,7 +2,7 @@
 
 ## Foundation boundary
 
-Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migrations. The frontend integrated from main reads persisted case/workflow API data; only the explicitly labeled example input uses the synthetic fixture. Case, generation, revision, review and task handlers are implemented. Real AI, speech and hosted persistence remain unverified. See H14_H18_INTEGRATION.md for verification boundaries.
+Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migrations. The frontend integrated from main reads persisted case/workflow API data; only the explicitly labeled example input uses the synthetic fixture. Case, generation, revision, review and task handlers are implemented. Real AI and local SQL workflows are verified; hosted writes and real bilingual speech remain separate gates. See H18_H24_DELIVERY.md for current verification boundaries.
 
 ## Intended completed flow
 
@@ -33,7 +33,7 @@ Findings are advisory risks, not legal certification. Customer observations stay
 
 Audit/revision/review rows are append-only; version content and evidence/listing snapshots are immutable. New sources require new IDs/versions. Rule verification can be updated; when implementing checks, snapshot the rule version, excerpt and checked date used in the audit payload.
 
-`source_ids` uses readable text IDs in arrays. SQL cannot FK every array element: Person 3 must validate every citation and input version against retrieved context. SQL does not independently implement business checking, role authorization, sequential-head locking or atomic orchestration. Those remain feature work.
+`source_ids` uses readable text IDs in arrays. Application/SQL workflow validation binds citations to retrieved case/product/rule context. Committed workflow RPCs lock heads, reject stale edits, atomically append versions/findings/revisions/reviews/audit, and preserve earlier content. Both P2 scalar and P3 JSON operation signatures are supported on confirmed missing-signature responses. Substantive market/platform rule evaluation remains unfinished.
 
 SQL uses snake_case; API DTOs use camelCase. Explicitly map/validate rows.
 
@@ -48,10 +48,11 @@ Generate/validate candidate, lock artifact, recheck `expectedVersion`, insert co
 - Browser case routes require a signed HttpOnly workspace session issued after Supabase Auth email/password verification and reject cross-origin mutations. Public registration is disabled; users are provisioned by an administrator. A legacy bearer token can remain configured for trusted API clients but is not part of browser sign-in. A role switch is presentation context, not authorization.
 - Public health returns availability enums only; configured DB query has a five-second timeout. No row content, credentials or provider errors are returned.
 - Speech processing is temporary/in-memory, with no raw audio retention. Confirmed editable transcript enters the existing text workflow.
+- Explicit browser recognition mode uses the browser vendor's service and sends no audio to ReLoop. Its disclosure, language, duration, cancellation and result timeouts are handled by the shared VoiceInput component/helper. Backend audio upload remains available for independently configured providers.
 - Migration/reset is CLI-only against a dedicated demo project; no public reset route.
 
 ## Failure/deployment
 
 Validate requests/model output, preserve last good versions, return sanitized typed errors and allow retry. Never silently substitute a fixture for a failed operation. Missing evidence/rules remain visible. Separate original-listing findings from proposed-draft findings.
 
-Deploy to a Node-capable Next.js host: `npm ci`, `npm run build`, `npm start`. Runtime secrets belong in hosting settings. This foundation creates no hosting account, public deployment, marketplace connection or external provider configuration. Apply/seed explicitly; add one real provider adapter after credentials are available.
+Deploy to a Node-capable Next.js host: `npm ci`, `npm run build`, `npm start`. Runtime secrets belong in hosting settings. The compatible organizer chat adapter is verified. This milestone creates no public deployment, marketplace connection or release tag. Hosted schema changes require the database owner's approval. See the final delivery report for deployment gates.

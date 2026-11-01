@@ -1,6 +1,6 @@
 {
   "project": "ReLoop AI",
-  "stage": "foundation",
+  "stage": "final_mvp_stabilization",
   "runtime": { "node": ">=22.19.0", "framework": "Next.js App Router", "database": "Supabase Postgres" },
   "platforms": [
     { "id": "shopify_us", "market": "US", "segment": "b2c", "format": "shopify_description", "liveIntegration": false },
@@ -8,18 +8,21 @@
     { "id": "alibaba_intl", "market": "global_b2b", "segment": "b2b", "format": "alibaba_b2b", "liveIntegration": false }
   ],
   "languages": [
-    { "locale": "zh-CN", "priority": "P0", "generationStatus": "unavailable", "speechStatus": "unavailable" },
-    { "locale": "en-US", "priority": "P0", "generationStatus": "unavailable", "speechStatus": "unavailable" },
+    { "locale": "zh-CN", "priority": "P0", "generationStatus": "beta", "speechStatus": "implemented_real_acceptance_pending" },
+    { "locale": "en-US", "priority": "P0", "generationStatus": "beta", "speechStatus": "implemented_real_acceptance_pending" },
     { "locale": "de-DE", "priority": "P1", "generationStatus": "unavailable", "speechStatus": "unavailable" },
     { "locale": "ar-AE", "priority": "P2", "generationStatus": "unavailable", "speechStatus": "unavailable" }
   ],
-  "aiProvider": null,
-  "transcriptionProvider": null,
+  "aiProvider": { "protocol": "openai_compatible", "verifiedBaseUrl": "https://api.tokenhubcloud.net/v1", "verifiedModel": "gpt-5.6-luna", "credentials": "local_or_host_secret_only" },
+  "transcriptionProvider": { "backend": "faster_whisper_local_cpu_or_separate_compatible_service", "localModel": "multilingual_base_int8", "realRecordedAudio": "zh_CN_and_en_US_verified_both_contexts", "browser": "SpeechRecognition_vendor_service_acceptance_failed", "physicalMicrophone": "pending", "organizerAudioSupported": false },
   "validationCategories": ["evidence", "market_law", "platform_rule"],
   "competitionValidationCategories": ["market_law", "platform_rule"],
   "revisions": { "artifactKinds": ["support_reply", "listing_correction"], "demoFollowUpsPerKind": 2, "preserveHistory": true, "reviewByVersion": true },
   "audio": { "maxBytes": 10485760, "maxSeconds": 60, "retained": false, "requiresTranscriptConfirmation": true },
   "externalPublishing": false,
   "seedSynthetic": true,
-  "requiredEnvironmentVariableNames": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "DATABASE_URL", "LLM_PROVIDER", "LLM_API_KEY", "LLM_MODEL", "TRANSCRIPTION_PROVIDER", "TRANSCRIPTION_API_KEY", "TRANSCRIPTION_MODEL"]
+  "requiredEnvironmentVariableNames": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+  "generationEnvironmentVariableNames": ["LLM_PROVIDER", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL", "LLM_TIMEOUT_MS"],
+  "optionalBackendSpeechEnvironmentVariableNames": ["TRANSCRIPTION_PROVIDER", "TRANSCRIPTION_BASE_URL", "TRANSCRIPTION_API_KEY", "TRANSCRIPTION_MODEL", "TRANSCRIPTION_TIMEOUT_MS"],
+  "databaseCliOnlyEnvironmentVariableNames": ["DATABASE_URL", "DATABASE_SSL_CA_FILE"]
 }

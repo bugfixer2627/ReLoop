@@ -87,6 +87,8 @@ function audioExtension(mimeType: string) {
 }
 
 function readProviderError(response: Response, fallback: ProviderErrorCode) {
+  if (fallback === "TRANSCRIPTION_FAILED" && response.status === 413) return new ProviderError("AUDIO_TOO_LARGE", 413, false);
+  if (fallback === "TRANSCRIPTION_FAILED" && response.status === 415) return new ProviderError("UNSUPPORTED_AUDIO", 415, false);
   if (response.status === 401 || response.status === 403) return new ProviderError("NOT_CONFIGURED", 503, false);
   if (response.status === 429) return new ProviderError("RATE_LIMITED", 429, true);
   if (response.status === 408 || response.status === 504) return new ProviderError("MODEL_TIMEOUT", 504, true);
@@ -152,7 +154,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const configured = { ...config, baseUrl };
 
-  async function completeJson<T>(
+  async function requestAndValidateJson<T>(
     messages: Array<{ role: "system" | "user"; content: string }>,
     schema: z.ZodType<T>,
     fallback: ProviderErrorCode = "INTERNAL_ERROR",
@@ -186,6 +188,17 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     const parsed = schema.safeParse(decoded);
     if (!parsed.success) throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
     return parsed.data;
+  }
+
+  async function completeJson<T>(messages: Array<{ role: "system" | "user"; content: string }>, schema: z.ZodType<T>, fallback: ProviderErrorCode = "INTERNAL_ERROR"): Promise<T> {
+    try {
+      return await requestAndValidateJson(messages, schema, fallback);
+    } catch (error) {
+      if (!(error instanceof ProviderError) || error.code !== "INVALID_MODEL_OUTPUT") throw error;
+      // One fresh provider generation, never parser repair or unchecked data.
+      // A second invalid response still fails before any persistence.
+      return requestAndValidateJson([...messages, { role: "user", content: "Your previous response failed strict JSON validation. Generate a fresh single JSON object matching the exact requested shape and value types. Use JSON strings/arrays/objects, no commentary, no markdown, and no extra wrapper objects." }], schema, fallback);
+    }
   }
 
   const ai: AiAdapter = {
@@ -282,7 +295,9 @@ export function getTranscriptionAdapter() {
   const config = transcriptionConfig(process.env);
   if (!config) return null;
   try {
-    return createOpenAICompatibleAdapters(config).transcription;
+    const timeout = Number(process.env.TRANSCRIPTION_TIMEOUT_MS);
+    const timeoutMs = Number.isInteger(timeout) && timeout >= 1000 && timeout <= 120000 ? timeout : undefined;
+    return createOpenAICompatibleAdapters({ ...config, timeoutMs }).transcription;
   } catch {
     return null;
   }

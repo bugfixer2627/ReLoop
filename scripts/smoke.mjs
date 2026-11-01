@@ -12,11 +12,8 @@ async function request(path, options) {
 
 try {
   const pages = [
-    ["/", "Clearer Product Claims"], ["/login", "Demo access token"],
-    ["/dashboard", "Workspace access required"], ["/feedback", "Workspace access required"],
-    ["/cases", "Workspace access required"], ["/settings", "Workspace access required"], ["/rules", "Workspace access required"],
-    [`/cases/${caseId}/detail`, "Workspace access required"],
-    [`/cases/${caseId}`, "Workspace access required"], [`/cases/${caseId}/fix`, "Workspace access required"],
+    ["/", "Clearer Product Claims"], ["/login", "Email address"],
+    ...["/dashboard", "/feedback", "/cases", "/settings", "/rules", `/cases/${caseId}/detail`, `/cases/${caseId}`, `/cases/${caseId}/fix`].map((path) => [path, "Checking workspace session"]),
   ];
   for (const [path, phrase] of pages) {
     const response = await request(path);
@@ -50,7 +47,7 @@ try {
   }
   const speech = await request("/api/transcribe", { method: "POST" });
   const speechBody = await speech.json();
-  assert.ok([400, 403, 503].includes(speech.status));
+  assert.ok([400, 401, 403, 503].includes(speech.status));
   assert.ok(["INVALID_REQUEST", "UNAUTHORIZED", "NOT_CONFIGURED"].includes(speechBody.error.code));
   console.log(`PASS protected case/workflow routes reject unavailable configuration; speech validates requests`);
 } catch (error) {

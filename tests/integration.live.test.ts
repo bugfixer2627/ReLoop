@@ -120,7 +120,7 @@ live('opt-in real application HTTP integration', () => {
       observations, requests,
       persisted: { createdCaseId, createdTaskId, evidenceFindingCount },
       notVerified: [
-        'Real AI generation, two generated revisions and STT remain unavailable while their HTTP routes return 501.',
+        'Hosted write workflows require explicit database approval; real provider/local SQL and speech suites run separately.',
         'Positive artifact review is not exercised without a legitimately generated artifact; no artifact is manufactured or inserted directly.',
         'Browser voice permissions and authenticated UI interaction require separate browser verification.',
       ],
@@ -211,13 +211,13 @@ live('opt-in real application HTTP integration', () => {
       const generated = parse(generationResponseSchema, analysis.body);
       if (!generated.ok) throw new Error('Evidence analysis failed.');
       expect(generated.data.caseId).toBe(createdCaseId);
-      expect(generated.data.artifacts).toEqual([]);
-      expect(generated.data.versions).toEqual([]);
+      expect(generated.data.artifacts.some((artifact) => artifact.kind === 'investigation_summary')).toBe(true);
+      expect(generated.data.versions.some((version) => version.content.format === 'investigation_summary')).toBe(true);
       expect(generated.data.findings.length).toBeGreaterThan(0);
       createdBundle = await loadBundle(createdCaseId);
       expect(createdBundle.case).toMatchObject(input);
       const sourceIds = new Set([...createdBundle.evidence, ...createdBundle.listings].map((source) => source.id));
-      for (const finding of generated.data.findings) {
+      for (const finding of generated.data.findings.filter((item) => item.artifactVersionId === null)) {
         expect(finding.category).toBe('evidence');
         expect(finding.caseId).toBe(createdCaseId);
         expect(finding.artifactVersionId).toBeNull();
@@ -251,23 +251,22 @@ live('opt-in real application HTTP integration', () => {
     });
   }, 45000);
 
-  it('reports unimplemented generation, revision and transcription honestly', async (context) => {
-    if (!writesAllowed) blocked(context, 'unimplemented AI and speech endpoints', 'Synthetic write authorization flag is absent.');
-    await verify('unimplemented AI and speech endpoints', async () => {
-      const caseId = createdCaseId ?? randomUUID();
+  it('validates nonexistent generation targets and invalid audio without creating output', async () => {
+    await verify('missing targets and invalid audio', async () => {
+      const caseId = randomUUID();
       const artifactId = randomUUID();
       for (const path of [`/api/cases/${caseId}/support`, `/api/cases/${caseId}/repair`, `/api/artifacts/${artifactId}/revise`]) {
         const result = await request(path, json(path.endsWith('/revise')
           ? { promptText: 'Shorten the draft.', promptLocale: 'en-US', expectedVersion: 1 } : {}));
-        expect(result.response.status).toBe(501);
-        expect(!result.envelope.ok && result.envelope.error.code).toBe('NOT_IMPLEMENTED');
+        expect(result.response.status).toBe(404);
+        expect(!result.envelope.ok && result.envelope.error.code).toBe('NOT_FOUND');
       }
       const form = new FormData();
       form.set('locale', 'zh-CN');
       form.set('audio', new Blob(['Synthetic non-speech route check; not a real transcript.'], { type: 'audio/webm' }), 'integration.webm');
       const transcription = await request('/api/transcribe', { method: 'POST', body: form });
-      expect(transcription.response.status).toBe(501);
-      expect(!transcription.envelope.ok && transcription.envelope.error.code).toBe('NOT_IMPLEMENTED');
+      expect(transcription.response.status).toBe(415);
+      expect(!transcription.envelope.ok && transcription.envelope.error.code).toBe('UNSUPPORTED_AUDIO');
     });
   }, 60000);
 
