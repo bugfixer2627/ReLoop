@@ -6,7 +6,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { openUiBrowser } from './lib/ui-browser.mjs';
 
 const base = process.env.RELOOP_BASE_URL ?? 'http://127.0.0.1:3017';
-const evidence = '.local-reviews/integration-evidence/phase2c';
+const evidence = '.local-reviews/integration-evidence/prototype-regressions';
 const original = JSON.parse(await readFile(new URL('../src/lib/fixtures/demo.json', import.meta.url), 'utf8'));
 const id = original.case.id;
 const missingId = '00000000-0000-4000-8000-000000000404';
@@ -92,33 +92,34 @@ try {
   await browser.send('Fetch.enable', { patterns: [{ urlPattern: '*://*/api/*' }] });
   await browser.viewport(1440, 1080);
   await browser.navigate(`${base}/login`);
+  await browser.evaluate("localStorage.removeItem('reloop-ui-preferences');window.dispatchEvent(new Event('reloop-preferences'))");
   await signIn();
-  await clientLink('.side-nav a:nth-child(3)', '/dashboard?view=investigation');
+  await clientLink('.side-nav a[data-nav=search]', '/dashboard?view=investigation');
   await expectText("document.querySelector('h1').textContent", 'Choose a case to investigate');
   assert.equal(await browser.evaluate("document.querySelector('.side-nav a[aria-current=page]').textContent.trim()"), 'Claim investigation');
   pass('Overview without a selected case opens a named Investigation picker with accurate navigation');
-  await clientLink('.side-nav a:nth-child(2)', '/feedback');
-  await clientLink('.side-nav a:nth-child(4)', '/dashboard?view=fix');
+  await clientLink('.side-nav a[data-nav=inbox]', '/feedback');
+  await clientLink('.side-nav a[data-nav=shield]', '/dashboard?view=fix');
   await expectText("document.querySelector('h1').textContent", 'Choose a case to fix');
   await browser.waitFor("document.querySelector('.case-open')");
   assert.equal(await browser.evaluate("document.querySelector('.case-open').getAttribute('href')"), `/cases/${id}/fix`);
   pass('Inbox without a selected case offers saved-case selection for Fix & Approve');
   await clientLink('.case-open', `/cases/${id}/fix`);
   await expectText('document.body.innerText', 'No saved support reply');
-  await clientLink('.side-nav a:nth-child(3)', `/cases/${id}`);
+  await clientLink('.side-nav a[data-nav=search]', `/cases/${id}`);
   await browser.waitFor("document.querySelector('.saved-case-identity')");
   assert.equal(await browser.evaluate("document.querySelectorAll('.saved-case-identity input, .saved-case-identity select, .saved-case-identity textarea').length"), 0);
   pass('Fix → Investigation retains the exact case and displays read-only SKU/product association');
-  await clientLink('.side-nav a:nth-child(2)', '/feedback');
-  assert.equal(await browser.evaluate("document.querySelector('.side-nav a:nth-child(3)').getAttribute('href')"), `/cases/${id}`);
+  await clientLink('.side-nav a[data-nav=inbox]', '/feedback');
+  assert.equal(await browser.evaluate("document.querySelector('.side-nav a[data-nav=search]').getAttribute('href')"), `/cases/${id}`);
   await clientLink('.side-nav a:first-child', '/dashboard');
-  assert.equal(await browser.evaluate("document.querySelector('.side-nav a:nth-child(4)').getAttribute('href')"), `/cases/${id}/fix`);
+  assert.equal(await browser.evaluate("document.querySelector('.side-nav a[data-nav=shield]').getAttribute('href')"), `/cases/${id}/fix`);
   pass('Passing through Inbox and Overview keeps the confirmed case ID');
   await browser.send('Page.reload');
   await expectText('document.body.innerText', 'Workspace access required');
   await browser.click('.workspace-access-required a[href="/login"]');
   await signIn();
-  await browser.waitFor(`document.querySelector('.side-nav a:nth-child(4)').getAttribute('href') === '/cases/${id}/fix'`);
+  await browser.waitFor(`document.querySelector('.side-nav a[data-nav=shield]').getAttribute('href') === '/cases/${id}/fix'`);
   pass('Refresh preserves tab case selection while keeping the existing memory-only token access gate');
 
   // Direct URL navigation through Next links keeps the existing access-token context.
@@ -137,22 +138,23 @@ try {
   assert.ok(!requests.some((item) => item.path.includes('not-a-uuid')));
   pass('Missing/deleted and malformed case URLs show an understandable recovery action; malformed IDs never reach the API');
 
+  await browser.click('.profile-control summary');
   await browser.click('.workspace-sign-out');
   await browser.waitFor("location.pathname === '/login'");
   await signIn();
   listMode = 'empty';
-  await clientLink('.side-nav a:nth-child(4)', '/dashboard?view=fix');
+  await clientLink('.side-nav a[data-nav=shield]', '/dashboard?view=fix');
   // The dashboard may reuse its existing response: reload after login in this scenario.
   await browser.send('Page.reload');
   await browser.waitFor("document.querySelector('.workspace-access-required')");
   await browser.click('.workspace-access-required a[href="/login"]');
   await signIn();
-  await clientLink('.side-nav a:nth-child(4)', '/dashboard?view=fix');
+  await clientLink('.side-nav a[data-nav=shield]', '/dashboard?view=fix');
   await expectText('document.body.innerText', 'No saved cases yet');
   assert.equal(await browser.evaluate("document.querySelector('.empty-state a').getAttribute('href')"), '/feedback');
   pass('No saved cases offers case creation instead of a silent Overview redirect');
   listMode = 'success';
-  await clientLink('.side-nav a:nth-child(2)', '/feedback');
+  await clientLink('.side-nav a[data-nav=inbox]', '/feedback');
   await browser.waitFor("document.querySelector('#merchant-locale')");
   await browser.click('.feedback-form button[type=submit]');
   await expectText('document.body.innerText', 'Enter a valid SKU');
@@ -222,7 +224,7 @@ try {
   await browser.waitFor("document.querySelector('.saved-case-identity')");
   await expectText('document.body.innerText', '请再次核对，保存为新案例。');
   pass('Saved-case recovery opens the exact returned case ID and original stored input');
-  await browser.click('.side-nav a:nth-child(4)');
+  await browser.click('.side-nav a[data-nav=shield]');
   await browser.waitFor("document.querySelector('.case-back-link')");
   for (const width of [320, 390, 768, 1024, 1440]) {
     await browser.viewport(width, 1080);
@@ -232,7 +234,7 @@ try {
   }
   pass('Back-navigation label and single arrow stay in one control at all four viewport widths');
   await browser.viewport(1440, 1080);
-  await browser.click('.side-nav a:nth-child(2)');
+  await browser.click('.side-nav a[data-nav=inbox]');
   await browser.waitFor("document.querySelector('#sku')");
   await browser.click('.topbar .language');
   await browser.screenshot(`${evidence}/inbox-en-1440.png`);
@@ -248,7 +250,7 @@ try {
   await browser.viewport(390, 1080);
   await browser.click('.mobile-menu');
   await browser.waitFor("document.querySelector('.sidebar[role=dialog]')");
-  await browser.click('.sidebar-mobile-actions button:first-child');
+  await browser.click('.sidebar-mobile-actions button[aria-label]');
   await browser.waitFor("document.documentElement.lang === 'zh-CN'");
   await browser.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
   await browser.waitFor("document.activeElement.classList.contains('mobile-menu')");
