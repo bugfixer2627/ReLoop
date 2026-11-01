@@ -6,6 +6,7 @@ import {
   reviseArtifactRequestSchema, revisionResponseSchema, reviewArtifactRequestSchema,
   reviewResponseSchema, taskResponseSchema, transcriptionResponseSchema,
   upsertTaskRequestSchema, MAX_AUDIO_BYTES, AUDIO_MIME_TYPES,
+  translationRequestSchema, translationResponseSchema,
 } from '@/lib/contracts';
 import type {
   CaseBundle, InputLocale, Platform,
@@ -118,6 +119,11 @@ export async function transcribeAudio(token: string, audio: Blob, locale: InputL
   form.set('audio', audio, `instruction.${extension}`);
   form.set('locale', locale);
   return request<ResponseData<typeof transcriptionResponseSchema>>('/api/transcribe', token, transcriptionResponseSchema, { method: 'POST', body: form, signal });
+}
+
+export async function translateText(token: string, text: string, sourceLocale: InputLocale, targetLocale: InputLocale) {
+  const body = translationRequestSchema.parse({ text, sourceLocale, targetLocale });
+  return request<ResponseData<typeof translationResponseSchema>>('/api/translate', token, translationResponseSchema, { method: 'POST', body: jsonBody(body) });
 }
 
 export function isUnavailable(error: unknown) {

@@ -7,6 +7,7 @@ export type ExtractedFeedback = z.infer<typeof feedbackExtractionSchema>;
 // Interface only: Person 2 supplies one real, server-side provider implementation.
 // Every provider result is untrusted until parsed by Zod and checked against sources.
 export interface AiAdapter {
+  translate(text: string, sourceLocale: InputLocale, targetLocale: InputLocale): Promise<string>;
   extract(context: CaseBundle): Promise<ExtractedFeedback>;
   summarize(context: CaseBundle, locale: InputLocale, extraction?: ExtractedFeedback): Promise<ArtifactContent>;
   generateSupport(context: CaseBundle): Promise<ArtifactContent>;

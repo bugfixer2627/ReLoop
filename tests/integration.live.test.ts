@@ -6,6 +6,7 @@ import {
   caseBundleResponseSchema, caseIdResponseSchema, caseListResponseSchema,
   createCaseRequestSchema, generationResponseSchema, healthResponseSchema,
   responseSchema, reviewArtifactRequestSchema, taskResponseSchema,
+  revisionResponseSchema, reviewResponseSchema,
   type Case, type CaseBundle,
 } from '@/lib/contracts';
 
@@ -16,6 +17,7 @@ const baseInput = process.env.RELOOP_INTEGRATION_BASE_URL;
 const accessToken = process.env.RELOOP_INTEGRATION_TOKEN;
 const enabled = Boolean(baseInput && accessToken);
 const writesAllowed = process.env.RELOOP_INTEGRATION_WRITES === '1';
+const aiAllowed = process.env.RELOOP_INTEGRATION_AI === '1';
 const live = enabled ? describe.sequential : describe.skip;
 const envelopeSchema = responseSchema(z.unknown());
 type Observation = { test: string; status: 'PASS' | 'FAIL' | 'BLOCKED'; detail: string };
@@ -54,7 +56,7 @@ async function request(path: string, init: RequestInit = {}, authenticated = tru
       ...init,
       redirect: 'error',
       cache: 'no-store',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(180000),
       headers: {
         Accept: 'application/json',
         ...(authenticated ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -115,13 +117,14 @@ live('opt-in real application HTTP integration', () => {
       environment: 'Real HTTP against the explicitly configured loopback application server; persistence is its configured service.',
       baseOrigin: base?.origin ?? null,
       syntheticWritesAuthorized: writesAllowed,
+      realAiCallsAuthorized: aiAllowed,
       mocksUsed: false,
       schemaChangesApplied: false,
       observations, requests,
       persisted: { createdCaseId, createdTaskId, evidenceFindingCount },
       notVerified: [
-        'Real AI generation, two generated revisions and STT remain unavailable while their HTTP routes return 501.',
-        'Positive artifact review is not exercised without a legitimately generated artifact; no artifact is manufactured or inserted directly.',
+        'Positive approval requires fully checked findings; tests never promote a draft to checked directly in the live database.',
+        'Real speech recognition requires a separately configured transcription provider and spoken samples.',
         'Browser voice permissions and authenticated UI interaction require separate browser verification.',
       ],
     };
@@ -167,7 +170,7 @@ live('opt-in real application HTTP integration', () => {
       const parsed = parse(caseListResponseSchema, result.body);
       if (!parsed.ok) throw new Error('Case list failed.');
       cases = parsed.data.cases;
-      const source = cases.find((item) => item.synthetic);
+      const source = cases.find((item) => item.synthetic && item.sku === 'RL-LAMP-01');
       if (source) sourceBundle = await loadBundle(source.id);
     });
   }, 45000);
@@ -188,6 +191,7 @@ live('opt-in real application HTTP integration', () => {
 
   it('creates, reloads and analyzes a synthetic case using persisted evidence', async (context) => {
     if (!writesAllowed) blocked(context, 'case create, reload and evidence analysis', 'Synthetic write authorization flag is absent.');
+    if (!aiAllowed) blocked(context, 'case create, reload and AI analysis', 'Set RELOOP_INTEGRATION_AI=1 to authorize real provider calls.');
     if (databaseBlock) blocked(context, 'case create, reload and evidence analysis', databaseBlock);
     if (!sourceBundle) blocked(context, 'case create, reload and evidence analysis', 'No saved synthetic case supplies an existing SKU; no product or source record will be invented.');
     await verify('case create, reload and evidence analysis', async () => {
@@ -211,22 +215,21 @@ live('opt-in real application HTTP integration', () => {
       const generated = parse(generationResponseSchema, analysis.body);
       if (!generated.ok) throw new Error('Evidence analysis failed.');
       expect(generated.data.caseId).toBe(createdCaseId);
-      expect(generated.data.artifacts).toEqual([]);
-      expect(generated.data.versions).toEqual([]);
+      expect(generated.data.artifacts).toHaveLength(1);
+      expect(generated.data.artifacts[0].kind).toBe('investigation_summary');
+      expect(generated.data.versions).toHaveLength(1);
       expect(generated.data.findings.length).toBeGreaterThan(0);
       createdBundle = await loadBundle(createdCaseId);
       expect(createdBundle.case).toMatchObject(input);
-      const sourceIds = new Set([...createdBundle.evidence, ...createdBundle.listings].map((source) => source.id));
+      const sourceIds = new Set([...createdBundle.evidence, ...createdBundle.listings, ...createdBundle.rules].map((source) => source.id));
       for (const finding of generated.data.findings) {
-        expect(finding.category).toBe('evidence');
         expect(finding.caseId).toBe(createdCaseId);
-        expect(finding.artifactVersionId).toBeNull();
         expect(finding.sourceIds.every((id) => sourceIds.has(id))).toBe(true);
         expect(createdBundle.findings.some((saved) => saved.id === finding.id)).toBe(true);
       }
-      evidenceFindingCount = generated.data.findings.length;
+      evidenceFindingCount = generated.data.findings.filter((finding) => finding.category === 'evidence').length;
     });
-  }, 60000);
+  }, 240000);
 
   it('saves a real QA task and reloads its audit event', async (context) => {
     if (!writesAllowed) blocked(context, 'task and audit persistence', 'Synthetic write authorization flag is absent.');
@@ -251,23 +254,51 @@ live('opt-in real application HTTP integration', () => {
     });
   }, 45000);
 
-  it('reports unimplemented generation, revision and transcription honestly', async (context) => {
-    if (!writesAllowed) blocked(context, 'unimplemented AI and speech endpoints', 'Synthetic write authorization flag is absent.');
-    await verify('unimplemented AI and speech endpoints', async () => {
-      const caseId = createdCaseId ?? randomUUID();
-      const artifactId = randomUUID();
-      for (const path of [`/api/cases/${caseId}/support`, `/api/cases/${caseId}/repair`, `/api/artifacts/${artifactId}/revise`]) {
-        const result = await request(path, json(path.endsWith('/revise')
-          ? { promptText: 'Shorten the draft.', promptLocale: 'en-US', expectedVersion: 1 } : {}));
-        expect(result.response.status).toBe(501);
-        expect(!result.envelope.ok && result.envelope.error.code).toBe('NOT_IMPLEMENTED');
+  it('saves generated drafts, two support revisions and a version-specific review', async (context) => {
+    if (!writesAllowed || !aiAllowed) blocked(context, 'saved AI workflow', 'Synthetic writes and real AI calls must both be explicitly enabled.');
+    if (!createdCaseId) blocked(context, 'saved AI workflow', 'Requires a newly created synthetic case.');
+    const caseId = createdCaseId;
+    await verify('saved AI workflow', async () => {
+      for (const path of [`/api/cases/${caseId}/support`, `/api/cases/${caseId}/repair`]) {
+        const result = await request(path, json({}));
+        expect(result.response.status).toBe(200);
+        const generated = parse(generationResponseSchema, result.body);
+        expect(generated.ok && generated.data.caseId).toBe(caseId);
       }
+      const initial = await loadBundle(caseId);
+      expect(initial.artifacts).toHaveLength(5);
+      const support = initial.artifacts.find((artifact) => artifact.kind === 'support_reply')!;
+      const original = initial.versions.find((version) => version.artifactId === support.id)!.content;
+      for (const [expectedVersion, promptLocale, promptText] of [[1, 'zh-CN', '请缩短回复，保留测试条件，不要承诺退款。'], [2, 'en-US', 'Keep the response concise and ask for the operating conditions.']] as const) {
+        const result = await request(`/api/artifacts/${support.id}/revise`, json({ expectedVersion, promptLocale, promptText }));
+        expect(result.response.status).toBe(200);
+        const revised = parse(revisionResponseSchema, result.body);
+        expect(revised.ok && revised.data.version.version).toBe(expectedVersion + 1);
+      }
+      const stale = await request(`/api/artifacts/${support.id}/revise`, json({ expectedVersion: 1, promptLocale: 'en-US', promptText: 'Stale edit check.' }));
+      expect(stale.response.status).toBe(409);
+      const result = await request(`/api/artifacts/${support.id}/review`, json({ version: 3, decision: 'changes_requested', reviewerRole: 'support', comment: 'Synthetic integration: verify outstanding checks.' }));
+      expect(result.response.status).toBe(200);
+      const reviewed = parse(reviewResponseSchema, result.body);
+      expect(reviewed.ok && reviewed.data.version.reviewStatus).toBe('changes_requested');
+      const loaded = await loadBundle(caseId);
+      expect(loaded.versions.find((version) => version.artifactId === support.id && version.version === 1)!.content).toEqual(original);
+      expect(loaded.revisions.filter((revision) => revision.artifactId === support.id)).toHaveLength(2);
+      expect(loaded.audit.some((event) => event.action === 'artifact_reviewed')).toBe(true);
+      const versionCount = loaded.versions.length;
+      expect((await request(`/api/cases/${caseId}/repair`, json({}))).response.status).toBe(200);
+      expect((await loadBundle(caseId)).versions).toHaveLength(versionCount);
+    });
+  }, 600000);
+
+  it('rejects mislabeled audio without inventing a transcript', async () => {
+    await verify('audio validation is independent of translation', async () => {
       const form = new FormData();
       form.set('locale', 'zh-CN');
       form.set('audio', new Blob(['Synthetic non-speech route check; not a real transcript.'], { type: 'audio/webm' }), 'integration.webm');
       const transcription = await request('/api/transcribe', { method: 'POST', body: form });
-      expect(transcription.response.status).toBe(501);
-      expect(!transcription.envelope.ok && transcription.envelope.error.code).toBe('NOT_IMPLEMENTED');
+      expect(transcription.response.status).toBe(415);
+      expect(!transcription.envelope.ok && transcription.envelope.error.code).toBe('UNSUPPORTED_AUDIO');
     });
   }, 60000);
 

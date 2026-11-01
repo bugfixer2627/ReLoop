@@ -121,6 +121,17 @@ export const transcriptionResponseSchema = responseSchema(z.object({
   text: z.string().min(1), locale: inputLocaleSchema, requiresConfirmation: z.literal(true),
 }));
 
+export const translationRequestSchema = z.strictObject({
+  text: z.string().trim().min(1).max(10000),
+  sourceLocale: inputLocaleSchema,
+  targetLocale: inputLocaleSchema,
+}).refine((input) => input.sourceLocale !== input.targetLocale, {
+  message: "Source and target languages must differ.",
+});
+export const translationResponseSchema = responseSchema(z.object({
+  text: z.string().min(1), sourceLocale: inputLocaleSchema, targetLocale: inputLocaleSchema,
+}));
+
 export const healthDataSchema = z.object({
   stage: z.literal("foundation"), status: z.enum(["ok", "degraded"]),
   database: z.enum(["not_configured", "reachable", "unreachable"]),

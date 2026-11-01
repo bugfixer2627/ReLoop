@@ -12,11 +12,11 @@ async function request(path, options) {
 
 try {
   const pages = [
-    ["/", "Clearer Product Claims"], ["/login", "Demo access token"],
-    ["/dashboard", "Workspace access required"], ["/feedback", "Workspace access required"],
-    ["/cases", "Workspace access required"], ["/settings", "Workspace access required"], ["/rules", "Workspace access required"],
-    [`/cases/${caseId}/detail`, "Workspace access required"],
-    [`/cases/${caseId}`, "Workspace access required"], [`/cases/${caseId}/fix`, "Workspace access required"],
+    ["/", "Clearer Product Claims"], ["/login", "Email address"],
+    ["/dashboard", "Checking workspace session"], ["/feedback", "Checking workspace session"],
+    ["/cases", "Checking workspace session"], ["/settings", "Checking workspace session"], ["/rules", "Checking workspace session"],
+    [`/cases/${caseId}/detail`, "Checking workspace session"],
+    [`/cases/${caseId}`, "Checking workspace session"], [`/cases/${caseId}/fix`, "Checking workspace session"],
   ];
   for (const [path, phrase] of pages) {
     const response = await request(path);
@@ -43,7 +43,7 @@ try {
   for (const [method, path] of endpoints) {
     const response = await request(path, { method });
     const body = await response.json();
-    assert.ok([401, 503].includes(response.status), `${path} must require configured demo access`);
+    assert.ok([401, 503].includes(response.status), `${path} must require authenticated access`);
     assert.equal(body.ok, false);
     assert.equal(body.data, null);
     assert.ok(["NOT_CONFIGURED", "UNAUTHORIZED"].includes(body.error.code), path);

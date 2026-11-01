@@ -1,8 +1,10 @@
 import { z } from "zod";
-import { findingSchema, generationRequestSchema } from "@/lib/contracts";
+import { generationRequestSchema } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
 import { getCaseBundle } from "@/lib/db/cases";
 import { compareListingEvidence } from "@/lib/rules/evidence";
+import { generateAnalysis } from "@/lib/workflows/generation";
+import { ProviderError } from "@/lib/ai/openai-compatible";
 import { checkAccess } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
@@ -32,8 +34,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
     const saved = await db.rpc("reloop_save_evidence_findings", { p_case_id: id, p_findings: items });
     if (saved.error) throw new Error("Save failed");
-    const updated = await getCaseBundle(db, id);
-    if (!updated) throw new Error("Case disappeared");
-    return apiSuccess({ caseId: id, artifacts: [], versions: [], findings: updated.findings.filter((f) => f.category === "evidence" && f.artifactVersionId === null).map((f) => findingSchema.parse(f)) });
-  } catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not analyze case.", 503, true); }
+    const generated = await generateAnalysis(db, bundle);
+    return apiSuccess({
+      caseId: id,
+      artifacts: generated.artifacts.filter((artifact) => artifact.kind === "investigation_summary"),
+      versions: generated.versions.filter((version) => generated.artifacts.some((artifact) => artifact.id === version.artifactId && artifact.kind === "investigation_summary")),
+      findings: generated.findings,
+    });
+  } catch (error) {
+    if (error instanceof ProviderError) return apiFailure(error.code, error.code === "NOT_CONFIGURED" ? "AI generation is not configured." : "AI investigation failed.", error.status, error.retryable);
+    if (error instanceof Error && error.message === "NEEDS_EVIDENCE") return apiFailure("NEEDS_EVIDENCE", "Documented product evidence is required before analysis.", 422);
+    return apiFailure("DATABASE_UNAVAILABLE", "Could not analyze case.", 503, true);
+  }
 }

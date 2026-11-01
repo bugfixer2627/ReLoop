@@ -19,6 +19,14 @@ describe("OpenAI-compatible provider adapter", () => {
 
   beforeEach(() => fetcher.mockReset());
 
+  it("translates only the supplied text and preserves a separate translation prompt", async () => {
+    fetcher.mockResolvedValueOnce(response({ choices: [{ message: { content: JSON.stringify({ text: "电池可使用2小时。" }) } }] }));
+    expect(await adapter().ai.translate("Battery lasts 2 hours.", "en-US", "zh-CN")).toBe("电池可使用2小时。");
+    const body = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
+    expect(body.messages[0].content).toContain("Translate");
+    expect(JSON.parse(body.messages[1].content)).toEqual({ text: "Battery lasts 2 hours." });
+  });
+
   it("extracts only a validated structure and sends the configured model", async () => {
     fetcher.mockResolvedValueOnce(response({
       choices: [{ message: { content: JSON.stringify({ issue: "Short runtime", customerClaim: null, unknowns: ["conditions"] }) } }],

@@ -2,14 +2,9 @@
 
 海外客户反馈驱动的跨平台商品承诺纠错与协同系统
 
-**Current milestone: H14–H18 integration on `feat/ai-api`.** The approved frontend from `origin/main` is integrated with the Person 2 backend. Live AI/speech, hosted persistence, checked rules and two complete browser demo runs remain release blockers. See [the integration report](docs/H14_H18_INTEGRATION.md).
+**Current milestone:** the AI branch is merged into main. The provided Supabase CA enables verified Postgres connections, and the missing workflow migrations are deployed. Real provider/hosted-Supabase HTTP checks pass case creation, AI summary, support and three listing drafts, support/listing v1→v2→v3, review decisions, task updates and reload. See [current verification and limitations](docs/WORKFLOW_VERIFICATION_2026-11-01.md).
 
-**Latest verification:** organizer AI generation now passes Chinese/English
-workflow replays with real calls and local SQL. Supabase HTTP reads work after
-a URL fix. Hosted integration is postponed, the live database has a new
-`clear` status incompatible with this branch's frozen DTO, and real speech is
-blocked by the organizer audio endpoint returning 404. See the exact current
-[service report](docs/H14_H18_SERVICE_VERIFICATION.md); no full live demo is claimed.
+Chinese/English text translation is a separate authenticated endpoint and Inbox reference preview; both directions were tested with the real chat provider. Speech transcription still requires its own working endpoint/model/key. Outstanding rule checks prevent approval, and a complete browser rehearsal remains unverified.
 
 ## Run locally
 
@@ -47,17 +42,16 @@ npm ci
 
 Case list/create/load and workflow routes use Supabase. Browser requests use the signed session cookie; a legacy bearer token may be configured for trusted API clients, but is not offered as a login method. Create an administrator-provisioned Auth user with `npm run auth:create-demo-user`; the command prints the one-time credentials. **AI generation, legal/platform rule checks, transcription and revision generation status is described in the integration report.** Nothing is sent or published externally.
 
-The tracked `.env.example` documents the exact configuration keys. Copy it only if `.env.local` does not already exist. Never commit credentials or copy provider keys into frontend configuration. The separate `feat/backend` branch remains unmerged pending migration/RPC agreement.
+The tracked `.env.example` documents the configuration keys. Copy it only if `.env.local` does not already exist. Never commit credentials or copy provider keys into frontend configuration. Set `DATABASE_SSL_CA_FILE` to the downloaded Supabase certificate when required; local certificates are ignored in `supabase/certs/`. `npm start` loads the project environment before launching Next.js so configured proxies apply at process startup.
 
-The production app's `npm run check` includes lint, type generation/TypeScript, tests, and production build. `npm run smoke` checks all six UI routes, protected API behavior, health, and explicit unavailable workflow routes. UI API adapter tests use mocked HTTP responses only within the test boundary; the browser screenshots are visual inspection and do not prove a live database/model call.
+The production app's `npm run check` includes lint, type generation/TypeScript, tests, and production build. `npm run smoke` checks public/protected page responses, API authentication and health. The opt-in `tests/integration.live.test.ts` checks actual saved results. It requires `RELOOP_INTEGRATION_BASE_URL`, `RELOOP_INTEGRATION_TOKEN`, `RELOOP_INTEGRATION_WRITES=1`, and `RELOOP_INTEGRATION_AI=1` for real provider calls and synthetic writes. No reset or migration runs inside the test.
 
 ## Remaining backend work
 
-- These workflow routes are implemented on this feature branch. Real services and checked rules remain release prerequisites.
-- The UI reports those responses as unavailable. It keeps existing version/review/task state unchanged and does not show generated findings, transcripts, approvals, revisions, or audit events that the server did not save.
-- The browser session uses a shared demo bearer token in memory. This is not individual user authentication or a durable session; production user accounts need a backend auth contract.
-- Updates from `origin/main` were integrated into this branch. This branch has not been merged into main. The separate backend branch remains pending agreement.
-- Local Supabase settings are present, but read-only connection probes failed. LLM, speech and demo-access settings are missing. No hosted data was modified.
+- Configure a verified transcription provider and test real Chinese/English recordings separately from text translation.
+- Resolve applicable rule evaluations before approving generated drafts; source metadata alone does not complete checks.
+- Run the full user-facing browser rehearsal, including translation previews and microphone permissions. API replays do not prove those interactions.
+- The browser uses a signed HttpOnly session issued after Supabase Auth email/password verification. Team/tenant provisioning and account management remain separate work.
 
 ## Configure a dedicated demo database
 

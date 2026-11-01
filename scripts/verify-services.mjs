@@ -54,7 +54,7 @@ if (supabaseUrl && env.SUPABASE_SERVICE_ROLE_KEY) {
     report.tables = Object.fromEntries(tableResults);
     const statuses = await db.from("cases").select("status");
     if (!statuses.error) {
-      const accepted = new Set(["open", "investigating", "pending_review", "closed"]);
+      const accepted = new Set(["open", "pending_review", "clear"]);
       report.unsupportedCaseStatuses = [...new Set(statuses.data.map((row) => row.status).filter((value) => !accepted.has(value) && /^[a-z_]{1,40}$/.test(value)))];
       report.caseStatusCompatibility = report.unsupportedCaseStatuses.length ? "contract_mismatch" : "compatible";
     }

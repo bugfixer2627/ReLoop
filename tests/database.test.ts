@@ -27,6 +27,7 @@ beforeAll(async () => {
   db = new PGlite();
   const migration = await readFile(new URL("../supabase/migrations/202610310001_foundation.sql", import.meta.url), "utf8");
   const skuMigration = await readFile(new URL("../supabase/migrations/202610310002_generate_product_sku.sql", import.meta.url), "utf8");
+  const caseOperations = await readFile(new URL("../supabase/migrations/202610310003_case_operations.sql", import.meta.url), "utf8");
   workflowMigration = await readFile(new URL("../supabase/migrations/202610310003_workflow_writes.sql", import.meta.url), "utf8");
   revalidationMigration = await readFile(new URL("../supabase/migrations/202610310004_workflow_revalidation.sql", import.meta.url), "utf8");
   revalidationMigration += await readFile(new URL("../supabase/migrations/202611010005_workflow_review_fix.sql", import.meta.url), "utf8");
@@ -34,7 +35,8 @@ beforeAll(async () => {
   seed = await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8");
   reset = await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8");
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-  await db.exec(`begin; ${migration} ${skuMigration} ${workflowMigration} ${revalidationMigration} ${seed} commit;`);
+  const clearStatus = await readFile(new URL("../supabase/migrations/202611010004_case_clear_status.sql", import.meta.url), "utf8");
+  await db.exec(`begin; ${migration} ${skuMigration} ${caseOperations} ${workflowMigration} ${clearStatus} ${revalidationMigration} ${seed} commit;`);
 }, 60000);
 
 beforeEach(async () => { await db.exec("begin"); });

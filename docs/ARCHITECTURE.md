@@ -2,7 +2,7 @@
 
 ## Foundation boundary
 
-Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migrations. The frontend integrated from main reads persisted case/workflow API data; only the explicitly labeled example input uses the synthetic fixture. Case, generation, revision, review and task handlers are implemented. Real AI, speech and hosted persistence remain unverified. See H14_H18_INTEGRATION.md for verification boundaries.
+Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migrations. The frontend reads persisted case/workflow API data; only the explicitly labeled example input uses the synthetic fixture. Case, AI summary, generation, revision, review and task handlers have passed real-provider/hosted-Supabase HTTP verification. Text translation is an independent chat-provider operation; previews preserve original inputs and are not persisted. Speech transcription remains independently blocked by missing provider configuration. See WORKFLOW_VERIFICATION_2026-11-01.md for boundaries.
 
 ## Intended completed flow
 

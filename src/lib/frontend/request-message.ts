@@ -1,6 +1,6 @@
 import { ApiRequestError } from './api-client';
 
-export function requestMessage(reason: unknown, locale: string, context: 'case' | 'save' | 'analysis' | 'voice') {
+export function requestMessage(reason: unknown, locale: string, context: 'case' | 'save' | 'analysis' | 'voice' | 'translation') {
   const chinese = locale === 'zh-CN';
   const code = reason instanceof ApiRequestError ? reason.code : '';
   if (context === 'case' && ['NOT_FOUND', 'INVALID_REQUEST'].includes(code)) {
@@ -17,6 +17,7 @@ export function requestMessage(reason: unknown, locale: string, context: 'case' 
     save: chinese ? '无法保存案例，请检查连接和输入后重试。' : 'Could not save the case. Check the connection and inputs, then retry.',
     analysis: chinese ? '证据核对失败，请重试或打开已保存案例。' : 'Evidence checking failed. Retry or open the saved case.',
     voice: chinese ? '转写失败，录音已丢弃，请改用文字输入。' : 'Transcription failed. The recording was discarded; use text input instead.',
+    translation: chinese ? '翻译失败，请重试。原文已保留。' : 'Translation failed. Retry; the original text is preserved.',
   };
   return messages[context];
 }

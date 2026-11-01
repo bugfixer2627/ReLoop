@@ -9,7 +9,7 @@ import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
 import { rememberCase } from '@/components/reloop-ui/useSelectedCase';
 import { VoiceInput } from '@/components/reloop-ui/VoiceInput';
 import { InboxContext } from '@/components/reloop-ui/InboxContext';
-import { ApiRequestError, analyzeCase, createCase } from '@/lib/frontend/api-client';
+import { ApiRequestError, analyzeCase, createCase, translateText } from '@/lib/frontend/api-client';
 import { requestMessage } from '@/lib/frontend/request-message';
 import { caseFieldIsInvalid, updateInvalidFields, type CaseInput, type CaseInputField } from '@/lib/frontend/case-validation';
 import { demoBundle } from '@/lib/fixtures/demo';
@@ -32,6 +32,44 @@ export default function FeedbackPage() {
   const [validatedFields, setInvalidFields] = useState<CaseInputField[]>([]);
   const [saved, setSaved] = useState<{ id: string; input: CaseInput } | null>(null);
   const [analysisUnavailable, setAnalysisUnavailable] = useState(false);
+  const [translationBusy, setTranslationBusy] = useState<'feedback' | 'instruction' | null>(null);
+  const [translations, setTranslations] = useState<Partial<Record<'feedback' | 'instruction', { source: string; sourceLocale: InputLocale; text?: string; error?: unknown }>>>({});
+
+  async function translate(field: 'feedback' | 'instruction') {
+    if (!accessToken || translationBusy) return;
+    const source = field === 'feedback' ? customerFeedback : merchantInstruction;
+    const sourceLocale = field === 'feedback' ? feedbackLocale : merchantLocale;
+    const targetLocale = sourceLocale === 'en-US' ? 'zh-CN' : 'en-US';
+    setTranslationBusy(field);
+    setTranslations((previous) => ({ ...previous, [field]: undefined }));
+    try {
+      const result = await translateText(accessToken, source, sourceLocale, targetLocale);
+      setTranslations((previous) => ({ ...previous, [field]: { source, sourceLocale, text: result.text } }));
+    } catch (error) {
+      setTranslations((previous) => ({ ...previous, [field]: { source, sourceLocale, error } }));
+    } finally {
+      setTranslationBusy(null);
+    }
+  }
+
+  function translationPreview(field: 'feedback' | 'instruction') {
+    const source = field === 'feedback' ? customerFeedback : merchantInstruction;
+    const sourceLocale = field === 'feedback' ? feedbackLocale : merchantLocale;
+    const entry = translations[field];
+    const current = entry?.source === source && entry.sourceLocale === sourceLocale ? entry : null;
+    const chinese = locale === 'zh-CN';
+    return <div className="field">
+      <button type="button" className="btn btn-soft btn-sm" disabled={!source.trim() || translationBusy !== null || saving} onClick={() => translate(field)}>
+        {translationBusy === field ? (chinese ? '正在翻译…' : 'Translating…') : sourceLocale === 'en-US' ? (chinese ? '翻译为中文' : 'Translate to Chinese') : (chinese ? '翻译为英文' : 'Translate to English')}
+      </button>
+      {current?.error != null && <p role="alert" className="api-error">{requestMessage(current.error, locale, 'translation')}</p>}
+      {current?.text && <div role="status">
+        <label htmlFor={`${field}-translation`}>{chinese ? '翻译预览（原文保持不变）' : 'Translation preview (original unchanged)'}</label>
+        <textarea id={`${field}-translation`} className="textarea" readOnly rows={4} value={current.text}/>
+        <p className="feedback-helper">{chinese ? '翻译仅供参考。保存案例时保留原始输入，不保存此预览。' : 'For reference only. Saving keeps the original input; this preview is not stored.'}</p>
+      </div>}
+    </div>;
+  }
   const text = locale === 'zh-CN' ? {
     title: '反馈收件箱', description: '将客户反馈与商家指令保存为可追溯的案例。',
     product: '商品与平台', sku: '商品 SKU', platform: '反馈来源平台', skuHint: '输入已登记的演示商品 SKU，与案例 ID 不同。',
@@ -45,7 +83,7 @@ export default function FeedbackPage() {
     retained: '输入未变时只重试核对，继续使用同一案例。', changed: '当前表单已更改。再次保存会新建案例，不会修改原始反馈或商品关联。',
     unavailable: '案例已保存。分析服务当前不可用，未生成分析结果。',
     synthetic: '仅输入合成演示数据，请勿填写真实客户个人信息。',
-    actionHint: '先保存原始反馈，再核对已保存的商品快照与规格。当前核对不代表完整 AI 分析。',
+    actionHint: '先保存原始反馈，再核对证据并生成 AI 调查摘要。未解决的证据或规则问题仍需人工审核。',
     skuError: '请填写有效 SKU（1–100 字符）。', complaintError: '请填写客户反馈（1–10,000 字符）。', instructionError: '请填写商家指令（1–4,000 字符）。', languageError: '请选择有效语言或平台。',
   } : {
     title: 'Feedback inbox', description: 'Save the customer message and merchant instruction as a traceable case.',
@@ -60,7 +98,7 @@ export default function FeedbackPage() {
     retained: 'Unchanged input retries the evidence check using the same case.', changed: 'This form has changed. Saving again creates a new case; the original feedback and product association stay unchanged.',
     unavailable: 'The case was saved. Analysis is currently unavailable; no result was generated.',
     synthetic: 'Synthetic demo data only. Do not enter real customer personal information.',
-    actionHint: 'Save the original feedback, then check saved listing snapshots against specifications. This check is not a complete AI analysis.',
+    actionHint: 'Save the original feedback, check the evidence, and generate an AI investigation summary. Unresolved evidence or rule checks still need human review.',
     skuError: 'Enter a valid SKU (1–100 characters).', complaintError: 'Enter the customer message (1–10,000 characters).', instructionError: 'Enter a merchant instruction (1–4,000 characters).', languageError: 'Choose a valid language or marketplace.',
   };
   const currentInput = createCaseRequestSchema.safeParse({
@@ -151,12 +189,14 @@ export default function FeedbackPage() {
               <legend>{text.complaint}</legend>
               <div className="field"><label htmlFor="feedback-locale">{text.feedbackLanguage}</label><select id="feedback-locale" name="feedbackLocale" className="select" value={feedbackLocale} onChange={(event) => setFeedbackLocale(inputLocaleSchema.parse(event.target.value))}>{languageOptions}</select></div>
               <div className="field"><label htmlFor="customer-feedback">{text.complaint}</label><textarea id="customer-feedback" name="feedbackText" className="textarea" rows={7} required maxLength={10000} value={customerFeedback} placeholder={text.complaintPlaceholder} aria-invalid={invalidFields.includes('feedbackText')} aria-describedby={`feedback-hint${invalidFields.includes('feedbackText') ? ' customer-feedback-error' : ''}`} onChange={(event) => updateField('feedbackText', event.target.value, setCustomerFeedback)}/>{fieldError('feedbackText')}<p id="feedback-hint" className="feedback-helper">{text.complaintHint}</p></div>
+              {translationPreview('feedback')}
             </fieldset>
             <fieldset className="feedback-section" disabled={saving}>
               <legend>{text.instruction}</legend>
               <div className="field"><label htmlFor="merchant-locale">{text.merchantLanguage}</label><select id="merchant-locale" name="merchantLocale" className="select" value={merchantLocale} onChange={(event) => setMerchantLocale(inputLocaleSchema.parse(event.target.value))}>{languageOptions}</select></div>
               <div className="field"><label htmlFor="merchant-instruction">{text.instruction}</label><textarea id="merchant-instruction" name="merchantInstruction" className="textarea" rows={4} required maxLength={4000} value={merchantInstruction} placeholder={text.instructionPlaceholder} aria-invalid={invalidFields.includes('merchantInstruction')} aria-describedby={`instruction-hint${invalidFields.includes('merchantInstruction') ? ' merchant-instruction-error' : ''}`} onChange={(event) => updateField('merchantInstruction', event.target.value, setMerchantInstruction)}/>{fieldError('merchantInstruction')}<p id="instruction-hint" className="feedback-helper">{text.instructionHint}</p></div>
               <div className="feedback-voice"><h3>{text.voice}</h3><VoiceInput disabled={saving} inputLocale={merchantLocale} onConfirmed={(value) => setMerchantInstruction((current) => current ? `${current}\n${value}` : value)}/></div>
+              {translationPreview('instruction')}
             </fieldset>
           </div>
           <div className="feedback-actions">

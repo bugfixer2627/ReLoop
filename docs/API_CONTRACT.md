@@ -1,6 +1,6 @@
 # Shared API contract v1 — foundation handoff
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case list/create/get, evidence-only analysis, task, and review routes are implemented. Support, repair, revision generation, and transcription routes remain HTTP 501.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Case creation, AI investigation, support, listing correction, revision, review and task persistence are implemented and have passed real-provider/hosted-Supabase HTTP checks. Text translation is separate from speech transcription. Speech has an implemented route but requires a separately configured provider; it currently returns 503 NOT_CONFIGURED for valid audio. See `WORKFLOW_VERIFICATION_2026-11-01.md` for test boundaries.
 
 Browser sign-in uses `POST /api/auth/login` with `{email,password}`. Supabase Auth verifies the credentials; the server issues a signed HttpOnly, SameSite cookie with an eight-hour lifetime. `GET /api/auth/session` reports whether it is valid and `POST /api/auth/logout` clears it. Public registration is disabled; users are provisioned by a Supabase administrator. Browser mutations require a same-origin `Origin` header. A configured `DEMO_ACCESS_TOKEN` remains available only for trusted API clients during migration and is not shown in the login UI.
 
@@ -29,7 +29,7 @@ Browser sign-in uses `POST /api/auth/login` with `{email,password}`. Supabase Au
 
 ## Endpoints
 
-URL IDs are UUIDs; validate before DB access. Enforce the shared demo-access gate before enabling business routes on a shared deployment.
+URL IDs are UUIDs; validate before DB access. All business routes require an authenticated workspace session or the optional trusted API bearer credential.
 
 | Method/path | Request | Success schema | Owner |
 |---|---|---|---|
@@ -44,6 +44,7 @@ URL IDs are UUIDs; validate before DB access. Enforce the shared demo-access gat
 | POST `/api/artifacts/:id/review` | `reviewArtifactRequestSchema` | `reviewResponseSchema` | P2/P3 |
 | POST `/api/cases/:id/tasks` | `upsertTaskRequestSchema` | `taskResponseSchema` | P2/P3 |
 | POST `/api/transcribe` | Multipart `audio`/`locale` | `transcriptionResponseSchema` | P2 |
+| POST `/api/translate` | `translationRequestSchema` | `translationResponseSchema` | P2 |
 
 ### Create and retrieve case
 
@@ -59,7 +60,7 @@ Artifact identity: `{id,caseId,kind,platform,market,segment,latestVersion}`. Ver
 
 Content discriminants: `investigation_summary`, `support_reply`, `shopify_description`, `amazon_listing`, `alibaba_b2b`. Validate the content **and matching artifact context**. Alibaba cannot receive a Shopify description. English Amazon output requires `internalBrief:true`; German can only be enabled after tests.
 
-Analyze currently saves deterministic battery-runtime evidence findings and returns no summary artifact. It does not yet perform AI extraction, customer-observation analysis, or legal/platform checks. Support and repair remain unimplemented. Check source IDs/versions against retrieved context. Repeated generation requests must not create duplicate initial artifacts; coordinate transaction/idempotency behavior before implementation.
+Analyze saves deterministic battery-runtime evidence findings, then extracts the reported issue and creates an AI investigation summary in the merchant's language. Support and repair create saved drafts in their platform-specific formats. Evidence-only findings can remain saved if the subsequent provider call fails. Repeated generation reuses existing initial artifacts; partial repair retries fill missing outputs. Generated drafts retain unresolved rule checks and cannot be approved until applicable checks are actually complete. Verified rule-source metadata alone does not make the draft checked.
 
 ### Revise both artifact kinds
 
@@ -69,7 +70,7 @@ Analyze currently saves deterministic battery-runtime evidence findings and retu
 
 Check expected head; generate/validate; lock and recheck; atomically save next version, new findings, revision and audit, then advance head. Stale edits return 409. Timeout/invalid output leaves old history intact. New versions start unapproved. Preserve old findings/reviews.
 
-The database migration provides `reloop_save_revision` for the atomic write; the HTTP revision route remains 501 until a provider and fresh output checks are integrated. Trusted server code must validate the content format, source IDs and findings before invoking it.
+The current HTTP revision route uses `reloop_create_revision` for atomic version, findings, revision and audit persistence. `reloop_save_revision` remains a legacy interface. Generated content is checked again; previous content is immutable and the new version starts unapproved.
 
 ### Review exact version
 
@@ -96,3 +97,7 @@ Multipart `audio` binary and `locale` (`zh-CN`/`en-US`). Maximum **10 MiB / 60 s
 ```
 
 Preview/edit transcript and require confirmation before case/revision submission. Cancel discards recording. Do not retain raw audio or log private transcripts. Permission denial, unavailable microphone, unsupported browser, upload/transcription failures and empty speech must leave typing usable. Microphone access needs HTTPS or localhost.
+
+### Text translation
+
+POST `/api/translate`: `{text,sourceLocale,targetLocale}`, with different source/target locales from `en-US | zh-CN` and 1–10,000 nonblank text characters. Returns `{text,sourceLocale,targetLocale}` in the standard envelope. It translates text only and never invokes transcription, changes the original input, or writes a translation preview to the database. Inbox previews are explicitly labeled as unsaved reference text. German and Arabic are not supported by this operation.

@@ -1,5 +1,7 @@
 # Combined frontend/backend verification
 
+**Historical report.** For current certificate setup, deployed workflow migrations, saved real AI workflow, separate translation, and speech limitations, see [the 1 November workflow verification](WORKFLOW_VERIFICATION_2026-11-01.md). The 501 and absent-operation conclusions below describe the earlier run.
+
 1 November 2026 (Asia/Shanghai). Tested merged `a655970` on `codex/integration-verification`. Personal screenshots, recordings, and raw verification output remain local under `.local-reviews/integration-evidence/` and are excluded from Git. This tracked report preserves the sanitized conclusions/reproduction. Passing build/PGlite tests does not prove deployed Supabase or AI behavior.
 
 ## Git integration
