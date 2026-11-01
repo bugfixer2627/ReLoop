@@ -37,14 +37,14 @@ export default function DashboardClient({ initialQuery, selectionTarget }: { ini
     const needle = query.toLocaleLowerCase();
     return cases.filter((item) => `${item.id} ${item.sku} ${item.feedbackText} ${item.merchantInstruction}`.toLocaleLowerCase().includes(needle));
   }, [cases, query]);
-  const openCount = cases.filter((item) => item.status === 'open' || item.status === 'investigating').length;
+  const openCount = cases.filter((item) => item.status === 'open').length;
   const reviewCount = cases.filter((item) => item.status === 'pending_review').length;
-  const closedCount = cases.filter((item) => item.status === 'closed').length;
+  const clearCount = cases.filter((item) => item.status === 'clear').length;
   const text = locale === 'zh-CN' ? {
-    eyebrow: '真实案例 · SAVED CASES', title: '案例工作台', description: '从已保存的客户反馈继续处理。', total: '全部案例', open: '处理中', review: '等待审核', closed: '已关闭',
+    eyebrow: '真实案例 · SAVED CASES', title: '案例工作台', description: '从已保存的客户反馈继续处理。', total: '全部案例', open: '处理中', review: '等待审核', clear: '已解决',
     list: '最近案例', empty: '暂无已保存案例。', emptySearch: '没有符合搜索条件的案例。', retry: '重试', unavailable: '未知', newCase: '新建案例', caseSku: '案例 / SKU', channel: '平台', status: '状态', created: '创建时间',
   } : {
-    eyebrow: 'SAVED CASES', title: 'Case overview', description: 'Continue from saved customer feedback.', total: 'All cases', open: 'In progress', review: 'Pending review', closed: 'Closed',
+    eyebrow: 'SAVED CASES', title: 'Case overview', description: 'Continue from saved customer feedback.', total: 'All cases', open: 'In progress', review: 'Pending review', clear: 'Clear',
     list: 'Recent cases', empty: 'No saved cases yet.', emptySearch: 'No cases match this search.', retry: 'Retry', unavailable: 'Unknown', newCase: 'New case', caseSku: 'Case / SKU', channel: 'Channel', status: 'Status', created: 'Created',
   };
   const metricValue = (value: number) => loading ? '—' : error ? text.unavailable : value;
@@ -61,7 +61,7 @@ export default function DashboardClient({ initialQuery, selectionTarget }: { ini
           <div className="card metric-card"><div className="metric-label">{text.total}</div><div className="metric-value">{metricValue(cases.length)}</div></div>
           <div className="card metric-card"><div className="metric-label">{text.open}</div><div className="metric-value">{metricValue(openCount)}</div></div>
           <div className="card metric-card metric-accent"><div className="metric-label">{text.review}</div><div className="metric-value">{metricValue(reviewCount)}</div></div>
-          <div className="card metric-card"><div className="metric-label">{text.closed}</div><div className="metric-value">{metricValue(closedCount)}</div></div>
+          <div className="card metric-card"><div className="metric-label">{text.clear}</div><div className="metric-value">{metricValue(clearCount)}</div></div>
         </div>
         <section className="card card-pad case-list-panel">
           <div className="card-title-row"><span className="card-title">{text.list}</span><span className="case-count">{loading ? '…' : filtered.length}</span></div>

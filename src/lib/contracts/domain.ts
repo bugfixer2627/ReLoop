@@ -134,7 +134,7 @@ export const caseSchema = z.object({
   id: z.uuid(), productId: z.uuid(), sku: z.string().min(1), channel: channelSchema,
   feedbackText: z.string().min(1), feedbackLocale: localeSchema,
   merchantInstruction: z.string().min(1), merchantLocale: inputLocaleSchema,
-  status: z.enum(["open", "investigating", "pending_review", "closed"]),
+  status: z.enum(["open", "pending_review", "clear"]),
   synthetic: z.boolean(), createdAt: timestampSchema,
 });
 

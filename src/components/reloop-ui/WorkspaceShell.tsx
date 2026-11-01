@@ -168,10 +168,10 @@ export function StatusBadge({ status }: { status: 'risk' | 'review' | 'safe' | '
   return <span className={`badge badge-${status}`}><i className="badge-dot"/>{labels[status]}</span>;
 }
 
-export function CaseStatusBadge({ status, locale = 'en-US' }: { status: 'open' | 'investigating' | 'pending_review' | 'closed'; locale?: 'en-US' | 'zh-CN' }) {
+export function CaseStatusBadge({ status, locale = 'en-US' }: { status: 'open' | 'pending_review' | 'clear'; locale?: 'en-US' | 'zh-CN' }) {
   const labels = locale === 'zh-CN'
-    ? { open: '待处理', investigating: '调查中', pending_review: '等待审核', closed: '已关闭' } as const
-    : { open: 'Open', investigating: 'Investigating', pending_review: 'Pending review', closed: 'Closed' } as const;
-  const variant = status === 'closed' ? 'safe' : status === 'pending_review' ? 'review' : 'neutral';
+    ? { open: '待处理', pending_review: '等待审核', clear: '已解决' } as const
+    : { open: 'Open', pending_review: 'Pending review', clear: 'Clear' } as const;
+  const variant = status === 'clear' ? 'safe' : status === 'pending_review' ? 'review' : 'neutral';
   return <span className={`badge badge-${variant}`}><i className="badge-dot"/>{labels[status]}</span>;
 }
