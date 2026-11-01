@@ -1,76 +1,47 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { CaseStatusBadge, PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShell';
+import { useState } from 'react';
+import { PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShell';
 import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
-import { ApiRequestError, casePlatformLabel, listCases } from '@/lib/frontend/api-client';
-import type { Case } from '@/lib/contracts';
-import { Icon } from '@/components/reloop-ui/icons';
+import { useCases } from '@/components/reloop-ui/useCases';
+import { CaseTable } from '@/components/reloop-ui/CaseTable';
+import { Unavailable } from '@/components/reloop-ui/Unavailable';
+import { filterCases, creationSeries } from '@/lib/frontend/case-list';
+import { caseHref, type CaseDestination } from '@/lib/frontend/case-navigation';
 
-function dateLabel(value: string, locale: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-}
-
-export default function DashboardClient({ initialQuery }: { initialQuery: string }) {
-  const { accessToken, locale } = useWorkspace();
-  const [cases, setCases] = useState<Case[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [query] = useState(initialQuery.trim());
-  const [reload, setReload] = useState(0);
-
-  useEffect(() => {
-    if (!accessToken) return;
-    let active = true;
-    listCases(accessToken).then((items) => {
-      if (active) setCases(items);
-    }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof ApiRequestError ? reason.message : 'Could not load saved cases.');
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [accessToken, reload]);
-
-  const filtered = useMemo(() => {
-    const needle = query.toLocaleLowerCase();
-    return cases.filter((item) => `${item.id} ${item.sku} ${item.feedbackText} ${item.merchantInstruction}`.toLocaleLowerCase().includes(needle));
-  }, [cases, query]);
-  const openCount = cases.filter((item) => item.status === 'open' || item.status === 'investigating').length;
-  const reviewCount = cases.filter((item) => item.status === 'pending_review').length;
-  const closedCount = cases.filter((item) => item.status === 'closed').length;
-  const text = locale === 'zh-CN' ? {
-    eyebrow: '真实案例 · SAVED CASES', title: '案例工作台', description: '从已保存的客户反馈继续处理。', total: '全部案例', open: '处理中', review: '等待审核', closed: '已关闭',
-    list: '最近案例', empty: '暂无已保存案例。', emptySearch: '没有符合搜索条件的案例。', retry: '重试', newCase: '新建案例', caseSku: '案例 / SKU', channel: '平台', status: '状态', created: '创建时间',
-  } : {
-    eyebrow: 'SAVED CASES', title: 'Case overview', description: 'Continue from saved customer feedback.', total: 'All cases', open: 'In progress', review: 'Pending review', closed: 'Closed',
-    list: 'Recent cases', empty: 'No saved cases yet.', emptySearch: 'No cases match this search.', retry: 'Retry', newCase: 'New case', caseSku: 'Case / SKU', channel: 'Channel', status: 'Status', created: 'Created',
-  };
-
-  return (
-    <WorkspaceShell title={text.title}>
-      <div className="page">
-        <PageHeading eyebrow={text.eyebrow} title={text.title} description={text.description} actions={<Link href="/feedback" className="btn btn-primary btn-sm"><Icon name="plus" size={14}/>{text.newCase}</Link>}/>
-        <div className="metrics-grid">
-          <div className="card metric-card"><div className="metric-label">{text.total}</div><div className="metric-value">{loading ? '—' : cases.length}</div></div>
-          <div className="card metric-card"><div className="metric-label">{text.open}</div><div className="metric-value">{loading ? '—' : openCount}</div></div>
-          <div className="card metric-card metric-accent"><div className="metric-label">{text.review}</div><div className="metric-value">{loading ? '—' : reviewCount}</div></div>
-          <div className="card metric-card"><div className="metric-label">{text.closed}</div><div className="metric-value">{loading ? '—' : closedCount}</div></div>
-        </div>
-        <section className="card card-pad case-list-panel">
-          <div className="card-title-row"><span className="card-title">{text.list}</span><span className="case-count">{loading ? '…' : filtered.length}</span></div>
-          {loading && <p className="api-state" role="status">{locale === 'zh-CN' ? '正在读取已保存案例…' : 'Loading saved cases…'}</p>}
-          {!loading && error && <div className="api-error" role="alert"><p>{error}</p><button className="btn btn-soft btn-sm" type="button" onClick={() => { setLoading(true); setError(null); setReload((value) => value + 1); }}>{text.retry}</button></div>}
-          {!loading && !error && filtered.length === 0 && <div className="empty-state"><Icon name="inbox" size={22}/><strong>{query ? text.emptySearch : text.empty}</strong><Link href="/feedback" className="card-link">{text.newCase} <Icon name="arrow" size={13}/></Link></div>}
-          {!loading && !error && filtered.length > 0 && <div className="table-wrap"><table className="data-table"><thead><tr><th>{text.caseSku}</th><th>{text.channel}</th><th>{text.status}</th><th>{text.created}</th><th/></tr></thead><tbody>
-            {filtered.map((item) => <tr key={item.id}>
-              <td><div className="case-id">{item.id.slice(0, 8).toUpperCase()}</div><div className="case-title">{item.feedbackText.slice(0, 84)}{item.feedbackText.length > 84 ? '…' : ''}</div><div className="case-sub">SKU {item.sku} {item.synthetic && <span className="badge badge-neutral">{locale === 'zh-CN' ? '合成' : 'Synthetic'}</span>}</div></td>
-              <td>{casePlatformLabel(item.channel)}</td><td><CaseStatusBadge status={item.status} locale={locale}/></td><td>{dateLabel(item.createdAt, locale)}</td>
-              <td><Link className="icon-btn case-open" href={`/cases/${item.id}`} aria-label={`Open case ${item.id}`}><Icon name="arrow" size={15}/></Link></td>
-            </tr>)}
-          </tbody></table></div>}
-        </section>
-      </div>
-    </WorkspaceShell>
-  );
+export default function DashboardClient({ initialQuery, selectionTarget }: { initialQuery: string; selectionTarget?: CaseDestination }) {
+  const { locale } = useWorkspace();
+  const { cases, loading, error, retry } = useCases();
+  const [period, setPeriod] = useState(30);
+  const zh = locale === 'zh-CN';
+  const filtered = filterCases(cases, { query: initialQuery });
+  const rows = selectionTarget || initialQuery ? filtered : filtered.slice(0, 5);
+  const series = creationSeries(cases, period, new Date());
+  const max = Math.max(1, ...series.map((d) => d.count));
+  const title = selectionTarget ? (selectionTarget === 'fix' ? (zh ? '选择案例以修订与审核' : 'Choose a case to fix & approve') : (zh ? '选择案例以核验' : 'Choose a case to investigate')) : (zh ? '案例工作台' : 'Case overview');
+  const metricValue = (value: number) => loading ? '—' : error ? (zh ? '未知' : 'Unknown') : new Intl.NumberFormat(locale).format(value);
+  const metrics = [
+    [zh ? '全部案例' : 'All cases', cases.length],
+    [zh ? '处理中' : 'In progress', cases.filter((c) => c.status === 'open' || c.status === 'investigating').length],
+    [zh ? '等待审核' : 'Pending review', cases.filter((c) => c.status === 'pending_review').length],
+    [zh ? '已关闭' : 'Closed', cases.filter((c) => c.status === 'closed').length],
+  ] as const;
+  return <WorkspaceShell title={title} searchQuery={initialQuery} selectionTarget={selectionTarget}><div className="page">
+    <PageHeading title={title} description={selectionTarget ? (zh ? '打开下方已保存案例，或新建案例。' : 'Open a saved case below, or create a new case.') : (zh ? '从客户反馈到证据核验，让每一步都有据可查。' : 'A clearer picture of the customer cases that need your attention.')} actions={<>{!selectionTarget && <button className="btn btn-soft btn-sm" disabled aria-describedby="report-unavailable">{zh ? '导出报告' : 'Export report'}</button>}<Link className="btn btn-primary btn-sm" href="/feedback">{zh ? '新建案例' : 'New case'}</Link></>}/>
+    {!selectionTarget && <p id="report-unavailable" className="muted">{zh ? '报告导出尚未接入。以下统计仅基于本次返回的案例。' : 'Report export is unavailable. Statistics below cover cases returned by this request.'}</p>}
+    <div className="metrics-grid">{metrics.map(([label, count], i) => <div key={label} className={`card metric-card ${i === 2 ? 'metric-accent' : ''}`}><div className="metric-label">{label}</div><div className="metric-value">{metricValue(count)}</div><span className="muted">{zh ? '已读取案例' : 'Loaded cases'}</span></div>)}</div>
+    {!selectionTarget && !initialQuery && <div className="dashboard-grid overview-insights">
+      <section className="card card-pad"><div className="card-title-row"><h2 className="card-title">{zh ? '案例创建趋势' : 'Case intake'}</h2><div className="toolbar-left" role="group" aria-label={zh ? '统计时间段' : 'Chart period'}>{[30, 90].map((days) => <button type="button" key={days} className={`tab ${days === period ? 'active' : ''}`} aria-pressed={days === period} onClick={() => setPeriod(days)}>{days} {zh ? '天' : 'days'}</button>)}</div></div>
+        <p className="muted">{zh ? '按 UTC 日期统计已返回的案例，不代表完整历史或投诉主题分析。' : 'Returned case creations by UTC date; not complete historical totals or complaint-theme analysis.'}</p>
+        {loading || error ? <p className="api-state">{loading ? (zh ? '正在读取…' : 'Loading…') : (zh ? '趋势暂不可用' : 'Chart unavailable')}</p> : <><div className="intake-chart" role="img" aria-label={zh ? '案例创建数量柱状图，详细数据见下方表格' : 'Case creation counts; exact values in the table below'}>{series.map((d) => <div className="intake-column" key={d.date} title={`${d.date}: ${d.count}`}><span style={{ height: `${d.count / max * 100}%` }}/></div>)}</div><div className="chart-axis"><span>{series[0].date}</span><span>{series.at(-1)?.date}</span></div><details><summary>{zh ? '查看每日数量' : 'View daily counts'}</summary><div className="chart-data"><table className="data-table"><thead><tr><th>{zh ? '日期 (UTC)' : 'Date (UTC)'}</th><th>{zh ? '案例数' : 'Cases'}</th></tr></thead><tbody>{series.map((d) => <tr key={d.date}><td>{d.date}</td><td>{d.count}</td></tr>)}</tbody></table></div></details></>}
+      </section>
+      <section className="card card-pad"><h2 className="card-title">{zh ? '最近活动' : 'Recent activity'}</h2><Unavailable title={zh ? '全局活动暂不可用' : 'Workspace activity unavailable'}>{zh ? '当前接口没有提供全局审计活动。打开具体案例查看已保存的任务和审核记录。' : 'The current API does not provide a global audit feed. Open a case to inspect its persisted tasks and review events.'}</Unavailable><Link className="card-link" href="/cases">{zh ? '浏览全部案例' : 'Browse all cases'}</Link><div className="complaint-tip"><h3>{zh ? '处理反馈的小提示' : 'Complaint tips'}</h3><p>{zh ? '保留客户原话，先核对证据，再准备回复。客户描述的体验不等同于已确认的产品缺陷。' : 'Keep the original message, check the evidence, then prepare a reply. A reported experience is not a confirmed product defect.'}</p></div></section>
+    </div>}
+    <section className="card card-pad case-list-panel"><div className="card-title-row"><h2 className="card-title">{selectionTarget ? (zh ? '选择已保存案例' : 'Choose a saved case') : (zh ? '最近客户案例' : 'Recent customer cases')}</h2><Link className="card-link" href="/cases">{zh ? '全部案例' : 'All cases'}</Link></div>
+      {loading && <p className="api-state" role="status">{zh ? '正在读取已保存案例…' : 'Loading saved cases…'}</p>}
+      {error && <div className="api-error" role="alert"><p>{error}</p><button className="btn btn-soft btn-sm" onClick={retry}>{zh ? '重试' : 'Retry'}</button></div>}
+      {!loading && !error && (rows.length ? <CaseTable cases={rows} locale={locale} href={selectionTarget ? (id) => caseHref(id, selectionTarget) : undefined}/> : <div className="empty-state"><strong>{initialQuery ? (zh ? '没有符合搜索条件的案例。' : 'No cases match this search.') : (zh ? '暂无已保存案例。' : 'No saved cases yet.')}</strong><Link href="/feedback" className="card-link">{zh ? '新建案例' : 'New case'}</Link></div>)}
+    </section>
+  </div></WorkspaceShell>;
 }

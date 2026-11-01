@@ -14,18 +14,20 @@ try {
   const pages = [
     ["/", "Clearer Product Claims"], ["/login", "Demo access token"],
     ["/dashboard", "Workspace access required"], ["/feedback", "Workspace access required"],
+    ["/cases", "Workspace access required"], ["/settings", "Workspace access required"], ["/rules", "Workspace access required"],
+    [`/cases/${caseId}/detail`, "Workspace access required"],
     [`/cases/${caseId}`, "Workspace access required"], [`/cases/${caseId}/fix`, "Workspace access required"],
   ];
   for (const [path, phrase] of pages) {
     const response = await request(path);
     const html = await response.text();
     assert.equal(response.status, 200, path);
-    assert.ok(html.includes(phrase), `Missing Chinese text on ${path}`);
+    assert.ok(html.includes(phrase), `Missing expected page content on ${path}`);
     assert.ok(!html.includes("Jasmine Li"), `Prototype identity leaked into ${path}`);
     assert.ok(!html.includes("\uFFFD"), `Broken encoding on ${path}`);
     console.log(`PASS page ${path}`);
   }
-  console.log("PASS landing, login and four protected workspace routes");
+  console.log(`PASS all ${pages.length} public and protected frontend routes`);
   const healthResponse = await request("/api/health");
   assert.equal(healthResponse.status, 200);
   const health = await healthResponse.json();

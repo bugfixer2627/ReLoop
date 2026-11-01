@@ -2,17 +2,20 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { ApiRequestError, transcribeAudio } from '@/lib/frontend/api-client';
-import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS } from '@/lib/contracts';
+import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, type InputLocale } from '@/lib/contracts';
+import { requestMessage } from '@/lib/frontend/request-message';
 import { useWorkspace } from './WorkspaceProviders';
 import { Icon } from './icons';
 
 type VoiceState = 'idle' | 'requesting' | 'recording' | 'transcribing' | 'preview' | 'error';
 
-export function VoiceInput({ onConfirmed, disabled = false }: {
+export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
   onConfirmed: (text: string) => void;
   disabled?: boolean;
+  inputLocale?: InputLocale;
 }) {
   const { accessToken, locale } = useWorkspace();
+  const transcriptId = useId();
   const [state, setState] = useState<VoiceState>('idle');
   const [message, setMessage] = useState('');
   const [transcript, setTranscript] = useState('');
@@ -122,7 +125,7 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
           setState('error');
           setMessage(error instanceof ApiRequestError && error.code === 'NOT_IMPLEMENTED'
             ? (chinese ? '语音转写服务尚未接入。录音已丢弃，请改用文字输入。' : 'Speech-to-text is not implemented. The recording was discarded; use text input instead.')
-            : error instanceof ApiRequestError ? error.message
+            : error instanceof ApiRequestError ? requestMessage(error, locale, 'voice')
               : (chinese ? '转写失败，录音已丢弃。请改用文字输入。' : 'Transcription failed. The recording was discarded; use text input instead.'));
         }).finally(() => { if (uploadRef.current === controller) uploadRef.current = null; });
       };
@@ -167,14 +170,14 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
   }
 
   const buttons = state === 'recording' ? (
-    <div className="voice-controls"><button className="btn btn-danger btn-sm" type="button" onClick={() => stopRecording(false)}>{chinese ? '停止並轉寫' : 'Stop & transcribe'}</button><button className="btn btn-soft btn-sm" type="button" onClick={() => stopRecording(true)}>{chinese ? '取消' : 'Cancel'}</button></div>
+    <div className="voice-controls"><button className="btn btn-danger btn-sm" type="button" onClick={() => stopRecording(false)}>{chinese ? '停止并转写' : 'Stop & transcribe'}</button><button className="btn btn-soft btn-sm" type="button" onClick={() => stopRecording(true)}>{chinese ? '取消' : 'Cancel'}</button></div>
   ) : (
-    <button className={`mic-button ${state === 'requesting' ? 'recording' : ''}`} type="button" disabled={disabled || state === 'requesting' || state === 'transcribing'} onClick={startRecording} aria-label={chinese ? '開始語音輸入' : 'Start voice input'}><Icon name="mic" size={18}/></button>
+    <button className={`mic-button ${state === 'requesting' ? 'recording' : ''}`} type="button" disabled={disabled || state === 'requesting' || state === 'transcribing'} onClick={startRecording} aria-label={chinese ? '开始语音输入' : 'Start voice input'}><Icon name="mic" size={18}/></button>
   );
 
   return (
     <div className="voice-input">
-      <div className="voice-box"><div>{buttons}</div><div className="voice-description"><strong>{state === 'recording' ? (chinese ? '正在錄音…最長 60 秒' : 'Recording… up to 60 seconds') : state === 'transcribing' ? (chinese ? '正在轉寫…' : 'Transcribing…') : (chinese ? '中文 / English 語音輸入' : 'Chinese / English voice input')}</strong><p>{state === 'recording' ? (chinese ? '停止後會先顯示可編輯文本。' : 'A transcript preview appears after stopping.') : (chinese ? '文字輸入始終可用；錄音不會自動提交。' : 'Typing remains available. Recording never submits automatically.')}</p></div></div>
+      <div className="voice-box"><div>{buttons}</div><div className="voice-description"><strong>{state === 'recording' ? (chinese ? '正在录音…最长 60 秒' : 'Recording… up to 60 seconds') : state === 'transcribing' ? (chinese ? '正在转写…' : 'Transcribing…') : (chinese ? '语音输入' : 'Voice input')}</strong><p>{state === 'recording' ? (chinese ? '停止后会先显示可编辑文本。' : 'A transcript preview appears after stopping.') : (chinese ? '文字输入始终可用；录音不会自动提交。' : 'Typing remains available. Recording never submits automatically.')}</p></div></div>
       {state === 'error' && message && <p className="voice-error" role="alert">{message}</p>}
       {state === 'transcribing' && <button className="btn btn-soft btn-sm" type="button" onClick={cancelUpload}>{chinese ? '取消转写' : 'Cancel transcription'}</button>}
       {state === 'preview' && <div className="voice-transcript"><label htmlFor={transcriptId}>{chinese ? '確認轉寫內容' : 'Confirm transcript'}</label><textarea id={transcriptId} className="textarea" rows={3} value={transcript} onChange={(event) => setTranscript(event.target.value)}/><div className="voice-controls"><button className="btn btn-primary btn-sm" type="button" disabled={!transcript.trim()} onClick={() => { onConfirmed(transcript.trim()); setTranscript(''); setState('idle'); }}>{chinese ? '使用轉寫文字' : 'Use transcript'}</button><button className="btn btn-soft btn-sm" type="button" onClick={() => { setTranscript(''); setState('idle'); }}>{chinese ? '丟棄轉寫' : 'Discard transcript'}</button></div></div>}

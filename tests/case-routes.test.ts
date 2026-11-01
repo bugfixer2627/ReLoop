@@ -45,6 +45,20 @@ describe("database-backed case routes", () => {
     expect((await POST(req)).status).toBe(403);
     expect(mocks.createCase).not.toHaveBeenCalled();
   });
+  it("accepts the same network host when Next.js uses an internal localhost URL", async () => {
+    mocks.createCase.mockResolvedValue(demoBundle.case.id);
+    const req = new Request("http://localhost:3000/api/cases", {
+      method: "POST", headers: { authorization: "Bearer demo-test-token", host: "10.30.0.95:3000", origin: "http://10.30.0.95:3000" }, body: JSON.stringify(payload),
+    });
+    expect((await POST(req)).status).toBe(201);
+  });
+  it("rejects a different origin even when the network host is provided", async () => {
+    const req = new Request("http://localhost:3000/api/cases", {
+      method: "POST", headers: { authorization: "Bearer demo-test-token", host: "10.30.0.95:3000", origin: "http://other.example:3000" }, body: JSON.stringify(payload),
+    });
+    expect((await POST(req)).status).toBe(403);
+    expect(mocks.createCase).not.toHaveBeenCalled();
+  });
   it("validates case IDs and loads a case bundle", async () => {
     expect((await getCase(request(), { params: Promise.resolve({ id: "bad" }) })).status).toBe(400);
     mocks.getCaseBundle.mockResolvedValue(demoBundle);

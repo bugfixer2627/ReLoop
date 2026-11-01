@@ -1,6 +1,6 @@
 # Shared API contract v1 — foundation handoff
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require coordination with Persons 1/3. Case, generation, revision, review, task and transcription routes are implemented on feat/ai-api. Health is public. Hosted integration and checked rule evaluations remain unverified.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case list/create/get, evidence-only analysis, task, and review routes are implemented. Support, repair, revision generation, and transcription routes remain HTTP 501.
 
 Protected routes accept `Authorization: Bearer <DEMO_ACCESS_TOKEN>` or the HttpOnly cookie issued by `/api/access`. The token requires at least 32 characters. The login UI uses a user-entered token in memory; never bake it into bundles. Transcription accepts both authentication forms. Cross-origin writes are rejected; cookie mutations require Origin while authenticated bearer CLI uploads may omit it.
 
@@ -59,7 +59,7 @@ Artifact identity: `{id,caseId,kind,platform,market,segment,latestVersion}`. Ver
 
 Content discriminants: `investigation_summary`, `support_reply`, `shopify_description`, `amazon_listing`, `alibaba_b2b`. Validate the content **and matching artifact context**. Alibaba cannot receive a Shopify description. English Amazon output requires `internalBrief:true`; German can only be enabled after tests.
 
-Analyze returns summary/evidence findings; support returns reply; repair returns three listing artifacts/findings. Check source IDs/versions against retrieved context. Repeated generation requests must not create duplicate initial artifacts; coordinate transaction/idempotency behavior before implementation.
+Analyze currently saves deterministic battery-runtime evidence findings and returns no summary artifact. It does not yet perform AI extraction, customer-observation analysis, or legal/platform checks. Support and repair remain unimplemented. Check source IDs/versions against retrieved context. Repeated generation requests must not create duplicate initial artifacts; coordinate transaction/idempotency behavior before implementation.
 
 ### Revise both artifact kinds
 
@@ -68,6 +68,8 @@ Analyze returns summary/evidence findings; support returns reply; repair returns
 ```
 
 Check expected head; generate/validate; lock and recheck; atomically save next version, new findings, revision and audit, then advance head. Stale edits return 409. Timeout/invalid output leaves old history intact. New versions start unapproved. Preserve old findings/reviews.
+
+The database migration provides `reloop_save_revision` for the atomic write; the HTTP revision route remains 501 until a provider and fresh output checks are integrated. Trusted server code must validate the content format, source IDs and findings before invoking it.
 
 ### Review exact version
 

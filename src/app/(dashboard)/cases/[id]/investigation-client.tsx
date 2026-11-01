@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShell';
+import { CaseStatusBadge, PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShell';
 import { useCaseBundle } from '@/components/reloop-ui/useCaseBundle';
 import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
 import { casePlatformLabel } from '@/lib/frontend/api-client';
@@ -9,6 +9,8 @@ import { platformDefinitions } from '@/lib/config/platforms';
 import { findingCategorySchema, type ArtifactContent } from '@/lib/contracts';
 import type { z } from 'zod';
 import { Icon } from '@/components/reloop-ui/icons';
+import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
+import { SavedCaseIdentity } from '@/components/reloop-ui/SavedCaseIdentity';
 
 function fieldText(value: unknown) {
   if (typeof value === 'string') return value;
@@ -58,11 +60,18 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
     <WorkspaceShell title={text.title}>
       <div className="page">
         {loading && <div className="card card-pad api-state" role="status">{text.loading}</div>}
-        {!loading && error && <div className="card card-pad api-error" role="alert"><p>{error}</p><button className="btn btn-soft btn-sm" type="button" onClick={retry}>{text.retry}</button></div>}
-        {!loading && !error && !bundle && <div className="card card-pad api-error" role="alert">{text.missing}</div>}
+        {!loading && (error || !bundle) && <CaseLoadProblem message={error ?? text.missing} locale={locale} destination="investigation" retry={retry}/>}
         {!loading && !error && bundle && <>
           <PageHeading eyebrow={`${text.data} · ${bundle.case.id.slice(0, 8).toUpperCase()}`} title={text.title} description={`${bundle.product.name} · ${bundle.case.sku} · ${casePlatformLabel(bundle.case.channel)}`} actions={<Link href={`/cases/${bundle.case.id}/fix`} className="btn btn-primary btn-sm">{text.next}<Icon name="arrow" size={14}/></Link>}/>
           {bundle.case.synthetic && <span className="badge badge-neutral">{text.synthetic}</span>}
+          <SavedCaseIdentity caseRecord={bundle.case} product={bundle.product} locale={locale}/>
+          <div className="metrics-grid investigation-metrics">
+            <div className="card metric-card"><div className="metric-label">{locale === 'zh-CN' ? '案例状态' : 'Case status'}</div><CaseStatusBadge status={bundle.case.status} locale={locale}/></div>
+            <div className="card metric-card"><div className="metric-label">{locale === 'zh-CN' ? '已保存发现' : 'Saved findings'}</div><div className="metric-value">{bundle.findings.length}</div></div>
+            <div className="card metric-card metric-accent"><div className="metric-label">{locale === 'zh-CN' ? '有记录的来源' : 'Documented sources'}</div><div className="metric-value">{bundle.evidence.filter((s) => s.verificationStatus === 'documented').length}</div></div>
+            <div className="card metric-card"><div className="metric-label">{locale === 'zh-CN' ? '平台快照' : 'Platform snapshots'}</div><div className="metric-value">{bundle.listings.length}</div></div>
+          </div>
+          <div className="workflow-links"><Link className="card-link" href={`/cases/${caseId}/detail`}>{locale === 'zh-CN' ? '案例详情' : 'Case detail'}</Link><Link className="card-link" href={`/rules?caseId=${caseId}`}>{locale === 'zh-CN' ? '浏览所有来源' : 'Browse sources'}</Link><span className="muted">{locale === 'zh-CN' ? '备注保存尚未接入；原始记录只读。' : 'Saving notes is unavailable; original records remain read-only.'}</span></div>
           {summaryVersion && <section className="card card-pad investigation-summary"><div className="card-title-row"><span className="card-title">{locale === 'zh-CN' ? '已保存的商家摘要' : 'Saved investigation summary'}</span><span className="badge badge-neutral">v{summaryVersion.version}</span></div><p>{artifactSummary(summaryVersion.content)}</p></section>}
           <div className="dashboard-grid investigation-grid">
             <div className="investigation-column">

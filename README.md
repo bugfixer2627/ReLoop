@@ -22,6 +22,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires reachable Supabase and a `DEMO_ACCESS_TOKEN` of at least 32 characters; enter it on `/login`. The frontend keeps the token in memory and requires login again after reload. The backend also supports an HttpOnly cookie through `/api/access`. Health checks database availability; AI/speech configured states indicate configuration presence, not a successful provider request.
 
+If your network requires an HTTP proxy, set `HTTPS_PROXY`, `NODE_USE_ENV_PROXY=1`, and `NO_PROXY=localhost,127.0.0.1` in `.env.local`; the dev launcher passes these settings to Node. To access the dev server through a local network hostname or IP, add it to `NO_PROXY` and set `RELOOP_DEV_ORIGINS` to that hostname or IP (comma-separated for multiple hosts). Restart the dev server after changing proxy settings. Use `http://localhost:3000` when working on the same computer.
+
 On this Windows machine, npm needs the Windows trust store. If npm reports `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, keep TLS validation enabled:
 
 ```powershell
@@ -41,7 +43,7 @@ npm ci
 
 ## Backend boundary
 
-On `feat/ai-api`, protected case, analysis, support/listing generation, revision, review, task and audit-write handlers use the database. The OpenAI-compatible generation and transcription adapters are implemented server-side. The frontend from `origin/main` uses the shared Zod DTOs and real API calls. Live behavior requires configured services; automated mocks are not evidence of a live provider call. Nothing is sent, published or refunded externally.
+Case list/create/load, evidence-only analysis, task and review routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. Apply the new database migration before using them. No login/session UI is implemented yet. **AI generation, legal/platform rule checks, transcription and revision generation are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**; revision persistence is available for future integration. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
 
 The tracked `.env.example` documents the exact configuration keys. Copy it only if `.env.local` does not already exist. Never commit credentials or copy provider keys into frontend configuration. The separate `feat/backend` branch remains unmerged pending migration/RPC agreement.
 
