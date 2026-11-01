@@ -1,5 +1,14 @@
 # Person 2 database and rules handoff for Person 3
 
+Latest: hosted integration is postponed by the user. No hosted mutations were
+performed. The HTTP connection failure is fixed by normalizing SUPABASE_URL
+when /rest/v1 was copied. Read-only probes now authenticate and read all tables.
+During this work P3's case_operations and case_clear_status migrations appeared
+in the live ledger. New status clear is incompatible with the frozen case DTO
+and blocks the case list/login. Do not silently map this state or replace RPCs;
+agree the contract after integration resumes. Direct PostgreSQL also needs the
+correct pooler route and verified CA certificate. See the latest service report.
+
 Person 2 consumes the repositories and workflow RPCs; Person 3 owns the schema,
 seed, sourced rule inventory and task implementation.
 

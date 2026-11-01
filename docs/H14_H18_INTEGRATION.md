@@ -1,5 +1,10 @@
 # H14–H18 integration and verification
 
+This report describes the ea36c13 milestone. For subsequent Supabase URL fixes,
+real organizer AI tests, focused voice changes and current blockers, read
+[H14_H18_SERVICE_VERIFICATION.md](H14_H18_SERVICE_VERIFICATION.md). The older
+service-availability and test-count statements below are retained as history.
+
 Date: 1 November 2026. Branch: `feat/ai-api`. This report records observed
 behavior, not completion of the original live MVP gates.
 

@@ -4,6 +4,13 @@
 
 **Current milestone: H14–H18 integration on `feat/ai-api`.** The approved frontend from `origin/main` is integrated with the Person 2 backend. Live AI/speech, hosted persistence, checked rules and two complete browser demo runs remain release blockers. See [the integration report](docs/H14_H18_INTEGRATION.md).
 
+**Latest verification:** organizer AI generation now passes Chinese/English
+workflow replays with real calls and local SQL. Supabase HTTP reads work after
+a URL fix. Hosted integration is postponed, the live database has a new
+`clear` status incompatible with this branch's frozen DTO, and real speech is
+blocked by the organizer audio endpoint returning 404. See the exact current
+[service report](docs/H14_H18_SERVICE_VERIFICATION.md); no full live demo is claimed.
+
 ## Run locally
 
 Use Node **24 LTS** (tested version recorded in `.node-version`), or Node >=22.19.0, and npm.

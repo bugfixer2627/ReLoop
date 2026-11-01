@@ -1,5 +1,14 @@
 # Person 2 backend handoff for Person 1
 
+Latest: [service and voice verification](H14_H18_SERVICE_VERIFICATION.md).
+Person 1 review is needed for focused VoiceInput.tsx and api-client.ts changes:
+recorder cleanup/errors, upload cancellation, unique editable-preview IDs,
+matching audio extensions and abort signals. Chinese/English initial/revision
+browser wiring passes with fake audio and mocked transcripts. Real recognition
+is blocked because the organizer provider's audio endpoint returned 404.
+The live database now includes status clear, outside the frozen DTO, so login
+currently fails at the case-list read pending the postponed team integration.
+
 The backend uses one persisted `caseId` for the case bundle and all generated
 artifacts. Protected browser calls may use the HttpOnly `reloop_demo_access`
 cookie issued by `POST /api/access`; API clients may send
