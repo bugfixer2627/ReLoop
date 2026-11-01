@@ -26,6 +26,11 @@ function assertRpc<T extends Record<string, unknown>>(data: T | T[] | null, erro
     // PostgREST errors are plain objects, not Error instances.
     const message = typeof error === "object" && error !== null && "message" in error
       ? String(error.message) : String(error);
+    const code = typeof error === "object" && error !== null && "code" in error ? error.code : null;
+    if (code === "40001") throw new Error("CONFLICT");
+    if (code === "P0002") throw new Error("NOT_FOUND");
+    if (code === "22023") throw new Error("INVALID_REQUEST");
+    if (/review blocked/i.test(message)) throw new Error("REVIEW_BLOCKED");
     if (/CONFLICT/i.test(message)) throw new Error("CONFLICT");
     if (/NOT_FOUND/i.test(message)) throw new Error("NOT_FOUND");
     if (/REVIEW_BLOCKED/i.test(message)) throw new Error("REVIEW_BLOCKED");
@@ -35,6 +40,12 @@ function assertRpc<T extends Record<string, unknown>>(data: T | T[] | null, erro
   const row = firstRow(data);
   if (!row) throw new Error("Database workflow write returned no row");
   return row;
+}
+
+function missingRpc(error: { code?: string } | null) {
+  // Fallback only when PostgREST confirms no function signature matched.
+  // Never retry a successful write or an ambiguous network/database failure.
+  return error?.code === "PGRST202";
 }
 
 export async function createArtifactVersion(
@@ -98,6 +109,17 @@ export async function createRevision(
     p_validation_status: input.validationStatus,
     p_findings: input.findings ?? [],
   });
+  if (missingRpc(result.error)) {
+    const findings = (input.findings ?? []).map((finding) => Object.fromEntries(Object.entries(finding).map(([key, value]) => [key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()), value])));
+    const legacy = await db.rpc("reloop_save_revision", {
+      p_artifact_id: input.artifactId,
+      p_revision: { expectedVersion: input.expectedVersion, promptText: input.promptText, promptLocale: input.promptLocale },
+      p_version: { locale: input.locale, languageStatus: input.languageStatus, content: input.content, sourceIds: input.sourceIds, validationStatus: input.validationStatus },
+      p_findings: findings,
+    });
+    const saved = assertRpc<{ version: { id: string; version: number }; revision: { id: string } }>(legacy.data, legacy.error);
+    return { artifact_id: input.artifactId, version_id: saved.version.id, version: saved.version.version, revision_id: saved.revision.id };
+  }
   return assertRpc<{ artifact_id: string; version_id: string; version: number; revision_id: string }>(result.data, result.error);
 }
 
@@ -113,6 +135,11 @@ export async function recordReview(
     p_decision: input.decision,
     p_comment: input.comment,
   });
+  if (missingRpc(result.error)) {
+    const legacy = await db.rpc("reloop_review_artifact", { p_artifact_id: input.artifactId, p_review: { version: input.version, reviewerRole: input.reviewerRole, decision: input.decision, comment: input.comment } });
+    const saved = assertRpc<{ artifactId: string; version: { id: string }; audit: { id: string } }>(legacy.data, legacy.error);
+    return { artifact_id: saved.artifactId, version_id: saved.version.id, audit_id: saved.audit.id };
+  }
   return assertRpc<{ artifact_id: string; version_id: string; audit_id: string }>(result.data, result.error);
 }
 
@@ -130,5 +157,11 @@ export async function upsertTask(
     p_state: input.state,
     p_source_ids: input.sourceIds,
   });
+  if (missingRpc(result.error)) {
+    const { caseId, ...task } = input;
+    const legacy = await db.rpc("reloop_upsert_task", { p_case_id: caseId, p_task: task });
+    const saved = assertRpc<{ task: { id: string }; audit: { id: string } }>(legacy.data, legacy.error);
+    return { task_id: saved.task.id, audit_id: saved.audit.id };
+  }
   return assertRpc<{ task_id: string; audit_id: string }>(result.data, result.error);
 }

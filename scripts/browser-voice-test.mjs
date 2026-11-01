@@ -8,7 +8,6 @@ const { chromium } = await import(process.env.RELOOP_PLAYWRIGHT_MODULE || "playw
 const browser = await chromium.launch({ channel: process.env.RELOOP_BROWSER_CHANNEL || "msedge", headless: true, args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
 const fixture = JSON.parse(await readFile(new URL("../src/lib/fixtures/demo.json", import.meta.url), "utf8"));
 const base = process.env.RELOOP_BASE_URL || "http://localhost:3000";
-const token = "browser-test-only-no-real-credentials";
 const success = (data) => ({ ok: true, data, error: null, requestId: randomUUID() });
 let stage = "initialization";
 let passed = 0;
@@ -33,7 +32,6 @@ try {
         let data;
         if (path === "/api/transcribe") {
           speechCalls++;
-          assert.equal(req.headers().authorization, "Bearer " + token);
           const form = await new Request(req.url(), { method: "POST", headers: { "content-type": req.headers()["content-type"] }, body: req.postDataBuffer() }).formData();
           assert.equal(form.get("locale"), locale);
           assert.ok(form.get("audio").size > 0);
@@ -45,7 +43,8 @@ try {
           }
           if (speechMode === "failure") return route.fulfill({ status: 502, json: { ok: false, data: null, error: { code: "TRANSCRIPTION_FAILED", message: "Synthetic transcription failure; typing remains available.", retryable: true }, requestId: randomUUID() } });
           data = { text: locale === "zh-CN" ? "请保留测试条件。" : "Keep the test conditions.", locale, requiresConfirmation: true };
-        } else if (path === "/api/cases" && req.method() === "GET") data = { cases: [bundle.case] };
+        } else if (path === "/api/auth/session") data = { authenticated: true };
+        else if (path === "/api/cases" && req.method() === "GET") data = { cases: [bundle.case] };
         else if (path === "/api/cases" && req.method() === "POST") {
           workflowCalls++;
           const payload = req.postDataJSON();
@@ -69,17 +68,13 @@ try {
         else throw new Error("Unexpected mock API route");
         await route.fulfill({ status: 200, json: success(data) });
       });
-      await page.goto(base + "/login");
-      await page.locator("#access-token").fill(token);
-      await page.getByRole("button", { name: "Enter workspace" }).click();
-      await page.waitForURL("**/dashboard");
+      // Test-only session response; login is outside this mocked speech test.
+      await page.goto(base + "/dashboard");
+      await page.locator('.side-nav a[href="/feedback"]').waitFor();
       if (locale === "zh-CN") await page.getByRole("button", { name: "Switch interface language" }).click();
-      // Client navigation preserves the current memory-only workspace session.
       if (mode === "initial") await page.locator('.side-nav a[href="/feedback"]').click();
-      else {
-        await page.locator('a[href="/cases/' + bundle.case.id + '"]').first().click();
-        await page.locator('a[href="/cases/' + bundle.case.id + '/fix"]').first().click();
-      }
+      else await page.goto(base + '/cases/' + bundle.case.id + '/fix');
+      if (mode === "initial") await page.locator('#merchant-locale').selectOption(locale);
       const parent = mode === "initial" ? page.locator("form.card") : page.locator(".artifact-workspace").first();
       const input = mode === "initial" ? page.locator("#merchant-instruction") : parent.locator(".artifact-revision > textarea");
       await input.fill("Existing typed instruction.");
@@ -101,10 +96,10 @@ try {
       await page.evaluate(() => { window.__voiceTestDeny = false; });
       async function record(stop = true) {
         await voice.locator(".mic-button").click();
-        await voice.getByText(locale === "zh-CN" ? /正在錄音/ : /Recording…/).waitFor();
+        await voice.getByText(locale === "zh-CN" ? /正在录音/ : /Recording…/).waitFor();
         // A real MediaRecorder needs elapsed audio frames before stop.
         await page.waitForTimeout(450);
-        await voice.getByRole("button", { name: stop ? (locale === "zh-CN" ? "停止並轉寫" : "Stop & transcribe") : (locale === "zh-CN" ? "取消" : "Cancel"), exact: true }).click();
+        await voice.getByRole("button", { name: stop ? (locale === "zh-CN" ? "停止并转写" : "Stop & transcribe") : (locale === "zh-CN" ? "取消" : "Cancel"), exact: true }).click();
       }
       await record(false);
       assert.equal(speechCalls, 0, "Cancelled audio must not upload");
@@ -134,6 +129,33 @@ try {
       await voice.getByRole("button", { name: locale === "zh-CN" ? "使用轉寫文字" : "Use transcript" }).click();
       assert.ok((await input.inputValue()).includes(corrected));
       assert.ok((await input.inputValue()).startsWith("Existing typed instruction."));
+      // Browser recognition uses injected lifecycle events, never an invented
+      // claim of real speech recognition. No /api/transcribe upload in this mode.
+      await page.evaluate(() => {
+        window.SpeechRecognition = class {
+          constructor() { window.__recognition = this; }
+          start() { this.onstart?.(); }
+          stop() { this.onend?.(); }
+          abort() { this.onend?.(); }
+        };
+      });
+      await voice.locator('select').selectOption('browser');
+      await voice.locator('.mic-button').click();
+      assert.equal(await page.evaluate(() => window.__recognition.lang), locale);
+      await page.evaluate(() => { window.__recognition.onresult({ results: [[{ transcript: 'Browser transcript for editing.' }]] }); });
+      await voice.getByRole('button', { name: locale === 'zh-CN' ? '停止并转写' : 'Stop & transcribe', exact: true }).click();
+      await voice.locator('.voice-transcript textarea').fill('Confirmed browser recognition text.');
+      assert.equal(workflowCalls, 0);
+      await voice.getByRole('button', { name: locale === 'zh-CN' ? '使用轉寫文字' : 'Use transcript' }).click();
+      assert.ok((await input.inputValue()).includes('Confirmed browser recognition text.'));
+      const beforeCancel = await input.inputValue();
+      await voice.locator('.mic-button').click();
+      await voice.getByRole('button', { name: locale === 'zh-CN' ? '取消' : 'Cancel', exact: true }).click();
+      assert.equal(await input.inputValue(), beforeCancel);
+      await voice.locator('.mic-button').click();
+      await page.evaluate(() => { window.__recognition.onerror({ error: 'network' }); });
+      await voice.locator('.voice-error').waitFor();
+      assert.equal(await input.inputValue(), beforeCancel);
       const submitted = page.waitForResponse((response) => mode === "initial" ? new URL(response.url()).pathname === "/api/cases" && response.request().method() === "POST" : response.url().endsWith("/revise"));
       if (mode === "initial") {
         await page.locator("#sku").fill("RL-LAMP-01");

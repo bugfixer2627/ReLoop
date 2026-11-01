@@ -6,6 +6,7 @@ import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, type InputLocale } from '@/lib/cont
 import { requestMessage } from '@/lib/frontend/request-message';
 import { useWorkspace } from './WorkspaceProviders';
 import { Icon } from './icons';
+import { browserRecognitionConstructor, startBrowserSpeech } from '@/lib/frontend/browser-speech';
 
 type VoiceState = 'idle' | 'requesting' | 'recording' | 'transcribing' | 'preview' | 'error';
 
@@ -19,6 +20,8 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
   const [state, setState] = useState<VoiceState>('idle');
   const [message, setMessage] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [method, setMethod] = useState<'api' | 'browser'>('api');
+  const recognitionRef = useRef<ReturnType<typeof startBrowserSpeech> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -37,6 +40,7 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
       pendingRef.current = false;
       discardRef.current = true;
       uploadRef.current?.abort();
+      recognitionRef.current?.cancel();
       chunksRef.current = [];
       if (timerRef.current) clearTimeout(timerRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -56,6 +60,34 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
     setMessage('');
     setTranscript('');
     setState('requesting');
+    if (method === 'browser') {
+      const Constructor = browserRecognitionConstructor();
+      if (!Constructor) {
+        pendingRef.current = false;
+        setState('error');
+        setMessage(chinese ? '此浏览器不支持语音识别。请使用支持该功能的 Chrome，选择转写服务或改用文字。' : 'Browser speech recognition is unavailable. Use a supported Chrome browser, a configured transcription service, or type instead.');
+        return;
+      }
+      recognitionRef.current = startBrowserSpeech(Constructor, inputLocale ?? locale, {
+        onStarted() { pendingRef.current = false; if (mountedRef.current) setState('recording'); },
+        onTranscript(text) { pendingRef.current = false; if (mountedRef.current) { setTranscript(text); setState('preview'); } },
+        onError(code) {
+          pendingRef.current = false;
+          if (!mountedRef.current) return;
+          setState('error');
+          const denied = ['not-allowed', 'service-not-allowed'].includes(code);
+          const details = code === 'network'
+            ? (chinese ? '浏览器的语音服务网络连接失败。' : 'The browser speech service could not connect to its network.')
+            : code === 'audio-capture' ? (chinese ? '浏览器无法取得麦克风音频。' : 'The browser could not capture microphone audio.')
+              : code === 'language-not-supported' ? (chinese ? '浏览器的语音服务不支持所选语言。' : 'The browser speech service does not support the selected language.')
+                : code === 'no-speech' ? (chinese ? '浏览器未返回可用的语音文本。' : 'The browser returned no usable speech text.') : '';
+          setMessage(denied
+            ? (chinese ? '语音权限或浏览器识别服务未获允许，请改用文字或转写服务。' : 'Microphone permission or the browser recognition service was denied. Type instead or use a configured transcription service.')
+            : details || (chinese ? '浏览器语音识别失败或没有识别到语音。请重试、改用文字或转写服务。' : 'Browser recognition failed or no speech was recognized. Retry, type instead, or use a configured transcription service.'));
+        },
+      });
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       pendingRef.current = false;
       setState('error');
@@ -145,6 +177,12 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
   }
 
   function stopRecording(discard: boolean) {
+    if (method === 'browser') {
+      pendingRef.current = false;
+      if (discard) { recognitionRef.current?.cancel(); setState('idle'); setTranscript(''); }
+      else { setState('transcribing'); recognitionRef.current?.stop(); }
+      return;
+    }
     discardRef.current = discard;
     if (timerRef.current) clearTimeout(timerRef.current);
     const recorder = recorderRef.current;
@@ -161,6 +199,7 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
   }
 
   function cancelUpload() {
+    recognitionRef.current?.cancel();
     uploadRef.current?.abort();
     uploadRef.current = null;
     setTranscript('');
@@ -176,6 +215,12 @@ export function VoiceInput({ onConfirmed, disabled = false, inputLocale }: {
 
   return (
     <div className="voice-input">
+      <label htmlFor={`${transcriptId}-method`} className="muted">{chinese ? '语音方式' : 'Speech method'}</label>
+      <select id={`${transcriptId}-method`} aria-label={chinese ? '语音方式' : 'Speech method'} className="select" value={method} disabled={disabled || ['requesting', 'recording', 'transcribing'].includes(state)} onChange={(event) => { setMethod(event.target.value as 'api' | 'browser'); setState('idle'); setMessage(''); setTranscript(''); }}>
+        <option value="api">{chinese ? '已配置的转写服务' : 'Configured transcription service'}</option>
+        <option value="browser">{chinese ? '浏览器语音识别（需浏览器支持）' : 'Browser speech recognition (requires support)'}</option>
+      </select>
+      {method === 'browser' && <p className="muted">{chinese ? '点击麦克风将使用浏览器的语音服务，音频可能发送给浏览器供应商。识别后先编辑并确认；ReLoop 不保存原始音频。' : 'Starting the microphone uses your browser’s speech service, which may send audio to the browser vendor. Edit and confirm the result before submitting; ReLoop does not store raw audio.'}</p>}
       <div className="voice-box"><div>{buttons}</div><div className="voice-description"><strong>{state === 'recording' ? (chinese ? '正在录音…最长 60 秒' : 'Recording… up to 60 seconds') : state === 'transcribing' ? (chinese ? '正在转写…' : 'Transcribing…') : (chinese ? '语音输入' : 'Voice input')}</strong><p>{state === 'recording' ? (chinese ? '停止后会先显示可编辑文本。' : 'A transcript preview appears after stopping.') : (chinese ? '文字输入始终可用；录音不会自动提交。' : 'Typing remains available. Recording never submits automatically.')}</p></div></div>
       {state === 'error' && message && <p className="voice-error" role="alert">{message}</p>}
       {state === 'transcribing' && <button className="btn btn-soft btn-sm" type="button" onClick={cancelUpload}>{chinese ? '取消转写' : 'Cancel transcription'}</button>}
