@@ -161,6 +161,7 @@ try {
   await b.evaluate("window.MediaRecorder=window.fixtureRecorder");
   pass('Explicit unsupported-recorder fixture shows honest voice error with typing fallback');
   await route(`/rules?caseId=${id}`); await text('SPEC-001'); await button('Product evidence');
+  await b.waitFor("location.search.includes('source=evidence') && document.querySelector('.source-tabs').parentElement.innerText.includes('SPEC-001') && !document.querySelector('.source-tabs').parentElement.innerText.includes('LAW-US-FTC-001')");
   assert.equal(await b.evaluate("document.querySelector('.source-tabs').parentElement.innerText.includes('LAW-US-FTC-001')"), false);
   await screenshot('rules-desktop');
   await route('/settings'); await text('Compact tables'); await b.click('[role=switch]');
