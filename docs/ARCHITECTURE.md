@@ -2,7 +2,7 @@
 
 ## Foundation boundary
 
-Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migration. Preview reads **original synthetic fixture JSON only**. Health and protected case list/create/get routes use the configured database; other business APIs remain 501 scaffolds. Provider interfaces exist; AI/STT adapters are not implemented.
+Next.js App Router, TypeScript, Tailwind, Zod, server-only Supabase client and PostgreSQL migrations. The frontend integrated from main reads persisted case/workflow API data; only the explicitly labeled example input uses the synthetic fixture. Case, generation, revision, review and task handlers are implemented. Real AI, speech and hosted persistence remain unverified. See H14_H18_INTEGRATION.md for verification boundaries.
 
 ## Intended completed flow
 

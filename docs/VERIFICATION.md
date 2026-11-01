@@ -1,6 +1,22 @@
-# Foundation verification — 31 October 2026
+# Current verification — 1 November 2026
 
-Milestone: shared main-branch scaffold, not the completed competition MVP.
+Latest follow-up: [H14_H18_SERVICE_VERIFICATION.md](H14_H18_SERVICE_VERIFICATION.md).
+147 offline tests pass and two separate real-AI/local-SQL tests pass. Real
+speech remains blocked; hosted writes were explicitly postponed. Older counts
+and service states in this file are historical checkpoints.
+
+The H14–H18 branch integrates the approved frontend from origin/main. Current
+results and exact test boundaries are in [H14_H18_INTEGRATION.md](H14_H18_INTEGRATION.md).
+The current suite contains 114 tests across 14 files, including actual local
+SQL-backed API routes with mocked AI HTTP. Real Supabase/AI/speech and the two
+complete live demos remain unverified. No hosted database writes were made.
+
+The following is the preserved historical foundation report. Its test counts,
+fixture-only UI description and 501 routes do not describe the current branch.
+
+## Historical foundation verification — 31 October 2026
+
+Milestone: Person 2 backend and AI stabilization on `feat/ai-api`; this is not the completed competition MVP.
 
 ## Verified
 

@@ -10,6 +10,8 @@ const supportId = "00000000-0000-4000-8000-000000000201";
 const listingId = "00000000-0000-4000-8000-000000000202";
 let seed: string;
 let reset: string;
+let workflowMigration: string;
+let revalidationMigration: string;
 
 async function createArtifact(id = supportId, kind = "support_reply") {
   await db.query("insert into artifacts(id, case_id, kind, platform, market, segment) values ($1, $2, $3, 'shopify_us', 'US', 'b2c')", [id, caseId, kind]);
@@ -25,11 +27,14 @@ beforeAll(async () => {
   db = new PGlite();
   const migration = await readFile(new URL("../supabase/migrations/202610310001_foundation.sql", import.meta.url), "utf8");
   const skuMigration = await readFile(new URL("../supabase/migrations/202610310002_generate_product_sku.sql", import.meta.url), "utf8");
-  const operationsMigration = await readFile(new URL("../supabase/migrations/202610310003_case_operations.sql", import.meta.url), "utf8");
+  workflowMigration = await readFile(new URL("../supabase/migrations/202610310003_workflow_writes.sql", import.meta.url), "utf8");
+  revalidationMigration = await readFile(new URL("../supabase/migrations/202610310004_workflow_revalidation.sql", import.meta.url), "utf8");
+  revalidationMigration += await readFile(new URL("../supabase/migrations/202611010005_workflow_review_fix.sql", import.meta.url), "utf8");
+  revalidationMigration += await readFile(new URL("../supabase/migrations/202611010006_workflow_write_audit.sql", import.meta.url), "utf8");
   seed = await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8");
   reset = await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8");
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls;");
-  await db.exec(`begin; ${migration} ${skuMigration} ${operationsMigration} ${seed} commit;`);
+  await db.exec(`begin; ${migration} ${skuMigration} ${workflowMigration} ${revalidationMigration} ${seed} commit;`);
 }, 60000);
 
 beforeEach(async () => { await db.exec("begin"); });
@@ -228,5 +233,40 @@ describe("PostgreSQL foundation migration and persistence invariants", () => {
   it("refuses demo reset if non-synthetic records are present", async () => {
     await db.query("update cases set synthetic = false where id = $1", [caseId]);
     await expect(db.exec(reset)).rejects.toThrow(/Reset refused/i);
+  });
+
+  it("writes workflow artifacts and rejects stale revisions atomically", async () => {
+    const created = await db.query<{ artifact_id: string; version_id: string; version: number }>(
+      `select * from reloop_create_artifact_version(
+        $1, 'support_reply', 'shopify_us', 'US', 'b2c', 'en-US', 'beta',
+        '{"format":"support_reply","subject":"Fixture","body":"Ask for conditions"}',
+        array['SPEC-001'], 'needs_rule_verification', '[]'::jsonb
+      )`, [caseId],
+    );
+    expect(created.rows[0].version).toBe(1);
+    const revised = await db.query<{ version: number }>(
+      `select * from reloop_create_revision(
+        $1, $2, 1, 'Shorten', 'zh-CN', 'en-US', 'beta',
+        '{"format":"support_reply","subject":"Fixture","body":"Shorter"}',
+        array['SPEC-001'], 'needs_rule_verification', '[]'::jsonb
+      )`, [caseId, created.rows[0].artifact_id],
+    );
+    expect(revised.rows[0].version).toBe(2);
+    await db.exec("savepoint stale_revision");
+    await expect(db.query(
+      `select * from reloop_create_revision(
+        $1, $2, 1, 'Stale', 'en-US', 'en-US', 'beta',
+        '{"format":"support_reply","subject":"Fixture","body":"Stale"}',
+        array['SPEC-001'], 'needs_rule_verification', '[]'::jsonb
+      )`, [caseId, created.rows[0].artifact_id],
+    )).rejects.toThrow(/CONFLICT/);
+    await db.exec("rollback to savepoint stale_revision");
+    await db.exec("savepoint stale_review");
+    await expect(db.query(
+      `select * from reloop_record_review(
+        $1, $2, 1, 'compliance', 'approved', 'Stale review'
+      )`, [caseId, created.rows[0].artifact_id],
+    )).rejects.toThrow(/CONFLICT/);
+    await db.exec("rollback to savepoint stale_review");
   });
 });

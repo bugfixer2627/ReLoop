@@ -9,10 +9,11 @@ import { GET, POST } from "@/app/api/cases/route";
 import { GET as getCase } from "@/app/api/cases/[id]/route";
 
 const payload = { sku: "RL-LAMP-01", channel: "shopify_us", feedbackText: "Battery lasts 2 hours.", feedbackLocale: "en-US", merchantInstruction: "Please investigate", merchantLocale: "en-US", synthetic: true };
-function request(method = "GET", body?: unknown, token = "demo-test-token") {
+const demoToken = "demo-test-token-012345678901234567890";
+function request(method = "GET", body?: unknown, token = demoToken) {
   return new Request("http://localhost/api/cases", { method, headers: { authorization: "Bearer " + token, "content-type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
-beforeEach(() => { vi.resetAllMocks(); process.env.DEMO_ACCESS_TOKEN = "demo-test-token"; mocks.getDatabaseClient.mockReturnValue({}); });
+beforeEach(() => { vi.resetAllMocks(); process.env.DEMO_ACCESS_TOKEN = demoToken; mocks.getDatabaseClient.mockReturnValue({}); });
 afterEach(() => { delete process.env.DEMO_ACCESS_TOKEN; });
 
 describe("database-backed case routes", () => {
@@ -40,7 +41,7 @@ describe("database-backed case routes", () => {
     expect((await response.json()).data.caseId).toBe(demoBundle.case.id);
   });
   it("rejects cross-origin writes", async () => {
-    const req = new Request("http://localhost/api/cases", { method: "POST", headers: { authorization: "Bearer demo-test-token", origin: "https://other.example" }, body: JSON.stringify(payload) });
+    const req = new Request("http://localhost/api/cases", { method: "POST", headers: { authorization: `Bearer ${demoToken}`, origin: "https://other.example" }, body: JSON.stringify(payload) });
     expect((await POST(req)).status).toBe(403);
     expect(mocks.createCase).not.toHaveBeenCalled();
   });

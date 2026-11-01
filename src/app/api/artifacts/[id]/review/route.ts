@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { artifactVersionSchema, auditEventSchema, reviewArtifactRequestSchema } from "@/lib/contracts";
+import { reviewArtifactRequestSchema } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
-import { mapRow } from "@/lib/db/cases";
+import { getCaseBundle } from "@/lib/db/cases";
+import { recordReview } from "@/lib/db/workflows";
 import { checkAccess } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
 export const dynamic = "force-dynamic";
+
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const denied = checkAccess(request); if (denied) return denied;
+  const denied = checkAccess(request);
+  if (denied) return denied;
   const { id } = await context.params;
   if (!z.uuid().safeParse(id).success) return apiFailure("INVALID_REQUEST", "Invalid artifact ID.", 400);
   let body: unknown;
@@ -17,14 +20,41 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const db = getDatabaseClient();
   if (!db) return apiFailure("NOT_CONFIGURED", "Database is not configured.", 503);
   try {
-    const result = await db.rpc("reloop_review_artifact", { p_artifact_id: id, p_review: parsed.data });
-    if (result.error?.code === "P0002") return apiFailure("NOT_FOUND", "Artifact not found.", 404);
-    if (result.error?.code === "40001") return apiFailure("CONFLICT", "Artifact version changed.", 409);
-    if (result.error?.code === "P0001") return apiFailure("REVIEW_BLOCKED", "Resolve validation findings before approval.", 422);
-    if (result.error?.code === "22023") return apiFailure("INVALID_REQUEST", "Reviewer role is not allowed.", 400);
-    if (result.error) throw new Error("Save failed");
-    return apiSuccess({ caseId: result.data.caseId, artifactId: result.data.artifactId,
-      version: artifactVersionSchema.parse(mapRow(result.data.version, { content_json: "content" })),
-      auditEvent: auditEventSchema.parse(mapRow(result.data.audit, { payload_json: "payload" })) });
-  } catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not save review.", 503, true); }
+    const artifactResult = await db.from("artifacts").select("case_id").eq("id", id).maybeSingle();
+    if (artifactResult.error) throw new Error("DATABASE");
+    if (!artifactResult.data) return apiFailure("NOT_FOUND", "Artifact not found.", 404);
+    const bundle = await getCaseBundle(db, artifactResult.data.case_id as string);
+    if (!bundle) return apiFailure("NOT_FOUND", "Case not found.", 404);
+    const artifact = bundle.artifacts.find((item) => item.id === id);
+    const version = bundle.versions.find((item) => item.artifactId === id && item.version === parsed.data.version);
+    if (!artifact || !version) return apiFailure("NOT_FOUND", "Artifact version not found.", 404);
+    if (artifact.latestVersion !== version.version) return apiFailure("CONFLICT", "Only the current artifact version can be reviewed.", 409);
+    const roleAllowed = artifact.kind === "support_reply"
+      ? parsed.data.reviewerRole === "support"
+      : artifact.kind === "listing_correction" && ["marketing", "compliance"].includes(parsed.data.reviewerRole);
+    if (!roleAllowed) return apiFailure("INVALID_REQUEST", "This reviewer role cannot review this artifact kind.", 400);
+    if (parsed.data.decision === "approved" && (version.validationStatus !== "checked" || bundle.findings.some((finding) => finding.artifactVersionId === version.id && (finding.severity === "blocker" || finding.evidenceStatus === "needs_evidence" || finding.ruleStatus === "needs_rule_verification")))) {
+      return apiFailure("REVIEW_BLOCKED", "This version still has unresolved evidence or rule checks.", 422);
+    }
+    const saved = await recordReview(db, {
+      caseId: bundle.case.id,
+      artifactId: id,
+      version: version.version,
+      reviewerRole: parsed.data.reviewerRole,
+      decision: parsed.data.decision,
+      comment: parsed.data.comment,
+    });
+    const updated = await getCaseBundle(db, bundle.case.id);
+    if (!updated) throw new Error("DATABASE");
+    const updatedVersion = updated.versions.find((item) => item.id === saved.version_id);
+    const auditEvent = updated.audit.find((item) => item.id === saved.audit_id);
+    if (!updatedVersion || !auditEvent) throw new Error("DATABASE");
+    return apiSuccess({ caseId: bundle.case.id, artifactId: id, version: updatedVersion, auditEvent });
+  } catch (error) {
+    if (error instanceof Error && error.message === "REVIEW_BLOCKED") return apiFailure("REVIEW_BLOCKED", "This version still has unresolved evidence or rule checks.", 422);
+    if (error instanceof Error && error.message === "INVALID_REQUEST") return apiFailure("INVALID_REQUEST", "This reviewer role cannot review this artifact kind.", 400);
+    if (error instanceof Error && error.message === "NOT_FOUND") return apiFailure("NOT_FOUND", "Artifact version not found.", 404);
+    if (error instanceof Error && error.message === "CONFLICT") return apiFailure("CONFLICT", "Only the current artifact version can be reviewed.", 409);
+    return apiFailure("DATABASE_UNAVAILABLE", "Could not persist the review.", 503, true);
+  }
 }

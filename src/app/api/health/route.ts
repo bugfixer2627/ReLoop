@@ -1,4 +1,5 @@
 import { getDatabaseClient } from "@/lib/db/client";
+import { getAiAdapter, getTranscriptionAdapter } from "@/lib/ai/openai-compatible";
 import { apiSuccess } from "@/lib/server/http";
 import type { z } from "zod";
 import type { healthDataSchema } from "@/lib/contracts";
@@ -17,8 +18,10 @@ export async function GET() {
       database = "unreachable";
     }
   }
+  const transcription = getTranscriptionAdapter() ? "configured" : "not_configured";
+  const generation = getAiAdapter() ? "configured" : "not_configured";
   return apiSuccess({
     stage: "foundation", status: database === "reachable" ? "ok" : "degraded",
-    database, generation: "not_implemented", transcription: "not_implemented",
+    database, generation, transcription,
   } satisfies z.infer<typeof healthDataSchema>);
 }

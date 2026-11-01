@@ -2,7 +2,7 @@
 
 **Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Breaking changes require Person 2 to coordinate with Persons 1/3. Health, case list/create/get, evidence-only analysis, task, and review routes are implemented. Support, repair, revision generation, and transcription routes remain HTTP 501.
 
-Case routes require `Authorization: Bearer <DEMO_ACCESS_TOKEN>`. Configure a strong shared token on the server. Until a secure login/session UI is implemented, do not embed the token in frontend code or expose it publicly. Cross-origin writes are rejected.
+Protected routes accept `Authorization: Bearer <DEMO_ACCESS_TOKEN>` or the HttpOnly cookie issued by `/api/access`. The token requires at least 32 characters. The login UI uses a user-entered token in memory; never bake it into bundles. Transcription accepts both authentication forms. Cross-origin writes are rejected; cookie mutations require Origin while authenticated bearer CLI uploads may omit it.
 
 ## Envelopes
 
@@ -23,7 +23,7 @@ Case routes require `Authorization: Bearer <DEMO_ACCESS_TOKEN>`. Configure a str
 | 409 | `CONFLICT` for stale version |
 | 413 / 415 | `AUDIO_TOO_LARGE` / `UNSUPPORTED_AUDIO` |
 | 422 | `INVALID_MODEL_OUTPUT`, `REVIEW_BLOCKED`; missing evidence/rule when it prevents the operation |
-| 429 / 501 | `RATE_LIMITED` / `NOT_IMPLEMENTED` |
+| 429 | `RATE_LIMITED` |
 | 503 / 504 | `NOT_CONFIGURED`, `DATABASE_UNAVAILABLE` / `MODEL_TIMEOUT` |
 | 502 / 500 | `TRANSCRIPTION_FAILED` / sanitized `INTERNAL_ERROR` |
 

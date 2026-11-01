@@ -98,6 +98,6 @@ describe("shared team contracts", () => {
     expect(transcriptionResponseSchema.safeParse({ ...result, data: { ...result.data, requiresConfirmation: true } }).success).toBe(true);
   });
   it("reports missing services honestly in the health contract", () => {
-    expect(healthResponseSchema.safeParse({ ok: true, data: { stage: "foundation", status: "degraded", database: "not_configured", generation: "not_implemented", transcription: "not_implemented" }, error: null, requestId }).success).toBe(true);
+    expect(healthResponseSchema.safeParse({ ok: true, data: { stage: "foundation", status: "degraded", database: "not_configured", generation: "not_configured", transcription: "not_configured" }, error: null, requestId }).success).toBe(true);
   });
 });

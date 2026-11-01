@@ -1,3 +1,8 @@
-import { notImplemented } from "@/lib/server/http";
+import { generationRoute } from "@/lib/workflows/http";
+import { generateSupport } from "@/lib/workflows/generation";
 
-export async function POST() { return notImplemented(); }
+export const dynamic = "force-dynamic";
+
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  return generationRoute(request, context, generateSupport);
+}

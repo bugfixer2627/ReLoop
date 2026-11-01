@@ -2,7 +2,14 @@
 
 海外客户反馈驱动的跨平台商品承诺纠错与协同系统
 
-**Current milestone: approved frontend integrated on `feat/frontend`.** The supplied Crypgo landing, Spark workspace shell, official ReLoop assets, Inter font, and inbox/investigation/fix compositions are integrated with the production case API contracts. This is still not the completed MVP: analysis/generation, STT, revisions, approvals, tasks, and audit-write API routes on production `main` return 501.
+**Current milestone: H14–H18 integration on `feat/ai-api`.** The approved frontend from `origin/main` is integrated with the Person 2 backend. Live AI/speech, hosted persistence, checked rules and two complete browser demo runs remain release blockers. See [the integration report](docs/H14_H18_INTEGRATION.md).
+
+**Latest verification:** organizer AI generation now passes Chinese/English
+workflow replays with real calls and local SQL. Supabase HTTP reads work after
+a URL fix. Hosted integration is postponed, the live database has a new
+`clear` status incompatible with this branch's frozen DTO, and real speech is
+blocked by the organizer audio endpoint returning 404. See the exact current
+[service report](docs/H14_H18_SERVICE_VERIFICATION.md); no full live demo is claimed.
 
 ## Run locally
 
@@ -13,7 +20,7 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires a configured Supabase database and `DEMO_ACCESS_TOKEN`; enter that token on `/login`. The token is kept in browser memory only and must be entered again after reload. There is no user-account or cookie-session service on production `main`. [The health endpoint](http://localhost:3000/api/health) reports database availability and generation/transcription implementation status.
+Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access requires reachable Supabase and a `DEMO_ACCESS_TOKEN` of at least 32 characters; enter it on `/login`. The frontend keeps the token in memory and requires login again after reload. The backend also supports an HttpOnly cookie through `/api/access`. Health checks database availability; AI/speech configured states indicate configuration presence, not a successful provider request.
 
 If your network requires an HTTP proxy, set `HTTPS_PROXY`, `NODE_USE_ENV_PROXY=1`, and `NO_PROXY=localhost,127.0.0.1` in `.env.local`; the dev launcher passes these settings to Node. To access the dev server through a local network hostname or IP, add it to `NO_PROXY` and set `RELOOP_DEV_ORIGINS` to that hostname or IP (comma-separated for multiple hosts). Restart the dev server after changing proxy settings. Use `http://localhost:3000` when working on the same computer.
 
@@ -30,29 +37,31 @@ npm ci
 - Dashboard reads case counts and rows from `GET /api/cases`; Inbox submits through `POST /api/cases`; Investigation and Fix & Approve read `GET /api/cases/:id`.
 - The UI uses production Zod DTOs, shows empty/loading/error states, and never substitutes UI handoff fixtures for saved case results. The optional Inbox example is explicitly labeled synthetic and uses the production seed fixture.
 - Original evidence, platform snapshots, existing findings, artifacts, versions, tasks, and audit entries render from the stored case bundle. No generated finding is inferred in the browser.
-- Revisions and review controls call the existing API routes and update only after a successful server response. The current production routes return 501, so no version or approval state is fabricated.
-- Voice UI uses browser microphone permission and `MediaRecorder`, supports stop/cancel, and sends the recording to `/api/transcribe`. Production `main` returns 501; the UI discards the recording and leaves typed input available without inventing a transcript.
+- Revisions and review controls call the implemented API routes and update after successful persistence. Unresolved evidence/rule checks block approval; request changes and reject remain available.
+- Voice UI uses microphone permission and `MediaRecorder`, supports stop/cancel, and sends bearer-authenticated audio to `/api/transcribe`. Editable transcripts require confirmation, and typing remains available on failure. Live speech remains unverified.
 - The integration uses the provided Spark/Crypgo source, scoped design CSS, official local ReLoop assets, and local Inter. See [the integration plan](docs/UI_INTEGRATION_PLAN.md) and [asset attribution](docs/UI_ATTRIBUTION.md).
 
 ## Backend boundary
 
 Case list/create/load, evidence-only analysis, task and review routes use Supabase and require a configured `DEMO_ACCESS_TOKEN` sent as a bearer token. Apply the new database migration before using them. No login/session UI is implemented yet. **AI generation, legal/platform rule checks, transcription and revision generation are not implemented.** Their routes return HTTP **501 `NOT_IMPLEMENTED`**; revision persistence is available for future integration. The UI still reads only `src/lib/fixtures/demo.json`. Nothing is sent or published externally.
 
-The local `.env.example` was removed by the merged production branch. Never commit credentials. Use the deployment/local environment setup agreed by the backend owners. Do not copy provider keys into frontend configuration. Remote `feat/ai-api` and `feat/backend` contain unmerged changes; the frontend branch did not merge or alter them.
+The tracked `.env.example` documents the exact configuration keys. Copy it only if `.env.local` does not already exist. Never commit credentials or copy provider keys into frontend configuration. The separate `feat/backend` branch remains unmerged pending migration/RPC agreement.
 
 The production app's `npm run check` includes lint, type generation/TypeScript, tests, and production build. `npm run smoke` checks all six UI routes, protected API behavior, health, and explicit unavailable workflow routes. UI API adapter tests use mocked HTTP responses only within the test boundary; the browser screenshots are visual inspection and do not prove a live database/model call.
 
 ## Remaining backend work
 
-- `POST /api/cases/:id/analyze`, `/support`, `/repair`, `/tasks`, `/api/artifacts/:id/revise`, `/review`, and `/api/transcribe` are preserved routes that currently return `501 NOT_IMPLEMENTED` on production `main`.
+- These workflow routes are implemented on this feature branch. Real services and checked rules remain release prerequisites.
 - The UI reports those responses as unavailable. It keeps existing version/review/task state unchanged and does not show generated findings, transcripts, approvals, revisions, or audit events that the server did not save.
 - The browser session uses a shared demo bearer token in memory. This is not individual user authentication or a durable session; production user accounts need a backend auth contract.
-- The separate `origin/feat/ai-api` and `origin/feat/backend` branches were not merged because they are outside the frontend integration branch and current production baseline.
-- No Supabase credentials or `DEMO_ACCESS_TOKEN` were present for this integration run, so live database case reads/writes and hosted persistence remain unverified.
+- Updates from `origin/main` were integrated into this branch. This branch has not been merged into main. The separate backend branch remains pending agreement.
+- Local Supabase settings are present, but read-only connection probes failed. LLM, speech and demo-access settings are missing. No hosted data was modified.
 
 ## Configure a dedicated demo database
 
-The current production branch does not include an `.env.example`. Ask the backend owner to configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and `DEMO_ACCESS_TOKEN` through the approved local/deployment secret setup. Do not copy credentials into the repository or browser bundle. There is no browser Supabase client; anonymous/authenticated roles have no direct table access.
+Use `.env.example` for exact names. `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `DEMO_ACCESS_TOKEN` are required for protected workflows. `DATABASE_URL` is used by CLI operations; LLM/speech variables enable their adapters. Run `node scripts/verify-services.mjs` for a sanitized read-only check. No browser Supabase client is used.
+
+**Do not run hosted migration, seed or reset commands below until the owner approves the exact isolated development database and migration history.**
 
 ```sh
 npm run db:apply
@@ -89,7 +98,7 @@ npm run build
 
 An independent prompt-routing CLI is available for local experiments; it does not enable product generation endpoints. See [Prompt Router](docs/PROMPT_ROUTER.md) for model selection, explicit eval criteria, bounded escalation, and offline tests.
 
-With the app running, `npm run smoke` checks the landing/login/workspace routes, access protection, health, and the remaining 501 workflow endpoints. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address.
+With the app running, `npm run smoke` checks the landing/login/workspace routes, access protection, health, and speech request handling. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address. It does not establish live AI, speech or database integration.
 
 ## Team handoff
 
