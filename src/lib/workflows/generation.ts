@@ -42,8 +42,8 @@ export async function generateAnalysis(db: SupabaseClient, bundle: CaseBundle) {
   requireEvidence(bundle);
   const adapter = getAiAdapter();
   if (!adapter) throw new ProviderError("NOT_CONFIGURED", 503, false);
-  await adapter.extract(bundle);
-  const content = await adapter.summarize(bundle, bundle.case.merchantLocale);
+  const extraction = await adapter.extract(bundle);
+  const content = await adapter.summarize(bundle, bundle.case.merchantLocale, extraction);
   const findings = [...checkListingEvidence(bundle), ...checkGeneratedContent(bundle, content)];
   await createArtifactVersion(db, {
     caseId: bundle.case.id,

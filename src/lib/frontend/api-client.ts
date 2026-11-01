@@ -106,15 +106,17 @@ export async function saveTask(token: string, caseId: string, input: z.input<typ
   return request<ResponseData<typeof taskResponseSchema>>(`/api/cases/${encodeURIComponent(caseId)}/tasks`, token, taskResponseSchema, { method: 'POST', body: jsonBody(body) });
 }
 
-export async function transcribeAudio(token: string, audio: Blob, locale: InputLocale) {
+export async function transcribeAudio(token: string, audio: Blob, locale: InputLocale, signal?: AbortSignal) {
   if (audio.size > MAX_AUDIO_BYTES) throw new ApiRequestError(413, 'AUDIO_TOO_LARGE', 'Recording exceeds the 10 MiB limit.', false);
-  if (!(AUDIO_MIME_TYPES as readonly string[]).includes(audio.type.split(';')[0])) {
+  const mimeType = audio.type.split(';')[0].trim().toLowerCase();
+  if (!(AUDIO_MIME_TYPES as readonly string[]).includes(mimeType)) {
     throw new ApiRequestError(415, 'UNSUPPORTED_AUDIO', 'This recording format is not supported.', false);
   }
   const form = new FormData();
-  form.set('audio', audio, 'instruction.webm');
+  const extension = { 'audio/webm': 'webm', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/ogg': 'ogg' }[mimeType];
+  form.set('audio', audio, `instruction.${extension}`);
   form.set('locale', locale);
-  return request<ResponseData<typeof transcriptionResponseSchema>>('/api/transcribe', token, transcriptionResponseSchema, { method: 'POST', body: form });
+  return request<ResponseData<typeof transcriptionResponseSchema>>('/api/transcribe', token, transcriptionResponseSchema, { method: 'POST', body: form, signal });
 }
 
 export function isUnavailable(error: unknown) {

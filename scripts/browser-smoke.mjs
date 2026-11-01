@@ -24,7 +24,7 @@ try {
   await page.locator("#access-token").fill("invalid-test-token");
   await page.getByRole("button", { name: "Enter workspace" }).click();
   await page.getByRole("alert").waitFor();
-  console.log("PASS browser login fails honestly without a configured access gate");
+  console.log("PASS browser login rejects an invalid demo token without exposing data");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(base);
   const widths = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));

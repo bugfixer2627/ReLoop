@@ -12,7 +12,7 @@ import { POST } from "@/app/api/transcribe/route";
 import { ProviderError } from "@/lib/ai/openai-compatible";
 let requestNumber = 0;
 
-function request(locale = "en-US", mimeType = "audio/webm", bytes = new Uint8Array([1, 2, 3])) {
+function request(locale = "en-US", mimeType = "audio/webm", bytes = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0])) {
   const form = new FormData();
   form.set("locale", locale);
   form.set("audio", new File([bytes], "sample.webm", { type: mimeType }));
@@ -66,6 +66,19 @@ describe("POST /api/transcribe", () => {
     const response = await POST(request("en-US", "application/octet-stream"));
     expect(response.status).toBe(415);
     expect(getTranscriptionAdapter).not.toHaveBeenCalled();
+  });
+
+  it.each(["audio/webm", "audio/wav", "audio/mp4", "audio/mpeg", "audio/ogg"])("rejects bytes mislabeled as %s before provider use", async (mimeType) => {
+    expect((await POST(request("en-US", mimeType, new Uint8Array([1, 2, 3])))).status).toBe(415);
+    expect(getTranscriptionAdapter).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing authenticated cookie flow", async () => {
+    process.env.DEMO_ACCESS_TOKEN = "c".repeat(32);
+    const audioRequest = request();
+    audioRequest.headers.set("cookie", "reloop_demo_access=" + process.env.DEMO_ACCESS_TOKEN);
+    getTranscriptionAdapter.mockReturnValue({ transcribe: vi.fn().mockResolvedValue({ text: "Keep test conditions.", locale: "en-US", durationSeconds: 3 }) });
+    expect((await POST(audioRequest)).status).toBe(200);
   });
 
   it("rejects an empty request as invalid input", async () => {

@@ -9,6 +9,7 @@ import {
   type InputLocale,
 } from "@/lib/contracts";
 import type { AiAdapter, ExtractedFeedback, TranscriptionAdapter } from "./types";
+import { generationConfig, transcriptionConfig } from "./config.mjs";
 
 const platformFormat = {
   shopify_us: "shopify_description",
@@ -16,12 +17,13 @@ const platformFormat = {
   alibaba_intl: "alibaba_b2b",
 } as const;
 
-const llmEnvironmentSchema = z.object({
-  provider: z.literal("openai_compatible"),
-  apiKey: z.string().min(1),
-  baseUrl: z.url().default("https://api.openai.com/v1"),
-  model: z.string().min(1),
-});
+const contentShape = {
+  investigation_summary: '{format:"investigation_summary",summary:string,unknowns:string[]}',
+  support_reply: '{format:"support_reply",subject:string,body:string}',
+  shopify_description: '{format:"shopify_description",title:string,description:string,faq:string[]}',
+  amazon_listing: '{format:"amazon_listing",title:string,bullets:string[],description:string,internalBrief:boolean}',
+  alibaba_b2b: '{format:"alibaba_b2b",title:string,specifications:Record<string,string>,benefits:string[],moq:string|null,leadTime:string|null,claimsNotes:string[]}',
+} as const;
 
 const completionSchema = z.object({
   choices: z.array(z.object({ message: z.object({ content: z.string().nullable() }) })).min(1),
@@ -66,7 +68,7 @@ function normalizeBaseUrl(value: string) {
   if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
     throw new ProviderError("NOT_CONFIGURED", 503, false);
   }
-  if (url.search || url.hash) throw new ProviderError("NOT_CONFIGURED", 503, false);
+  if (url.username || url.password || url.search || url.hash) throw new ProviderError("NOT_CONFIGURED", 503, false);
   return url.toString().replace(/\/$/, "");
 }
 
@@ -85,6 +87,7 @@ function audioExtension(mimeType: string) {
 }
 
 function readProviderError(response: Response, fallback: ProviderErrorCode) {
+  if (response.status === 401 || response.status === 403) return new ProviderError("NOT_CONFIGURED", 503, false);
   if (response.status === 429) return new ProviderError("RATE_LIMITED", 429, true);
   if (response.status === 408 || response.status === 504) return new ProviderError("MODEL_TIMEOUT", 504, true);
   if (response.status >= 500) return new ProviderError(fallback, 502, true);
@@ -169,7 +172,14 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     if (!content) throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
     let decoded: unknown;
     try {
-      decoded = JSON.parse(content);
+      // The organizer gateway can enclose the entire JSON document in this
+      // exact transport envelope. Strip only one complete envelope, never
+      // search arbitrary prose for a JSON fragment or repair invalid data.
+      const trimmed = content.trim();
+      const document = trimmed.startsWith("<escape>") && trimmed.endsWith("</escape>")
+        ? trimmed.slice("<escape>".length, -"</escape>".length).trim()
+        : trimmed;
+      decoded = JSON.parse(document);
     } catch {
       throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
     }
@@ -182,13 +192,13 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     async extract(context): Promise<ExtractedFeedback> {
       return completeJson([
         { role: "system", content: "Extract only the reported issue and customer claim. Return exactly {issue:string,customerClaim:{metric:\"battery_runtime\",value:number,unit:\"hours\",qualifier:\"reported\",conditions:Record<string,string>}|null,unknowns:string[]}. Use customerClaim=null when no numeric runtime is stated. Never treat customer statements as verified product facts." },
-        { role: "user", content: JSON.stringify(contextForPrompt(context)) },
+        { role: "user", content: JSON.stringify({ feedbackText: context.case.feedbackText, feedbackLocale: context.case.feedbackLocale }) },
       ], feedbackExtractionSchema);
     },
-    async summarize(context, locale): Promise<ArtifactContent> {
+    async summarize(context, locale, extraction): Promise<ArtifactContent> {
       return completeJson([
-        { role: "system", content: `${systemInstruction(locale)} Return JSON matching {format:"investigation_summary",summary:string,unknowns:string[]}. Clearly separate documented evidence from customer testimony.` },
-        { role: "user", content: JSON.stringify(contextForPrompt(context)) },
+        { role: "system", content: `${systemInstruction(locale)} Return exactly one JSON object matching ${contentShape.investigation_summary}. Write summary and unknowns in ${locale === "zh-CN" ? "Simplified Chinese" : "English"}. Clearly separate documented evidence from customer testimony.` },
+        { role: "user", content: JSON.stringify({ ...contextForPrompt(context), extractedFeedback: extraction }) },
       ], artifactContentSchema).then((content) => {
         if (content.format !== "investigation_summary") throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
         return content;
@@ -196,7 +206,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     },
     async generateSupport(context): Promise<ArtifactContent> {
       return completeJson([
-        { role: "system", content: `${systemInstruction("en-US")} Return JSON matching {format:"support_reply",subject:string,body:string}. Ask for information needed to investigate. Do not promise refunds, replacement, or a confirmed defect.` },
+        { role: "system", content: `${systemInstruction("en-US")} Return exactly one JSON object matching ${contentShape.support_reply}. Write an English email directly to the customer using you/your, not an internal report. Ask the customer for information needed to investigate. Do not promise refunds, replacement, or a confirmed defect.` },
         { role: "user", content: JSON.stringify(contextForPrompt(context)) },
       ], artifactContentSchema).then((content) => {
         if (content.format !== "support_reply") throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
@@ -206,7 +216,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     async generateListing(context, platform): Promise<ArtifactContent> {
       const format = platformFormat[platform];
       return completeJson([
-        { role: "system", content: `${systemInstruction("en-US")} Draft only the ${platform} listing structure with format ${format}. Return exactly the fields required by that format: shopify_description={format,title,description,faq:string[]}; amazon_listing={format,title,bullets:string[],description,internalBrief:boolean}; alibaba_b2b={format,title,specifications:Record<string,string>,benefits:string[],moq:string|null,leadTime:string|null,claimsNotes:string[]}. Do not claim the draft is approved or publishable. For Amazon Germany use an English internal reviewer brief unless tested German generation is explicitly available. For Alibaba use B2B fields and only documented MOQ/lead-time values.` },
+        { role: "system", content: `${systemInstruction("en-US")} Draft only the ${platform} listing structure with format ${format}. Return ONE flat JSON object with exactly this shape: ${contentShape[format]}. Do not wrap it in a platform key or include drafts for other platforms. Do not claim the draft is approved or publishable. ${platform === "amazon_de" ? "Use an English internal reviewer brief with internalBrief:true; German generation is not verified." : platform === "alibaba_intl" ? "Use English B2B wholesale fields and only documented MOQ/lead-time values; use null if missing." : "Write an English consumer-facing description and FAQ; keep internal investigation notes out of the product copy."}` },
         { role: "user", content: JSON.stringify(contextForPrompt(context)) },
       ], artifactContentSchema).then((content) => {
         if (content.format !== format || (platform === "amazon_de" && content.format === "amazon_listing" && !content.internalBrief)) {
@@ -218,7 +228,7 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     async revise(context, current: ArtifactVersion, prompt, locale): Promise<ArtifactContent> {
       const expectedFormat = current.content.format;
       return completeJson([
-        { role: "system", content: `${systemInstruction(locale)} Revise only the supplied current artifact in response to the merchant's revision request. Keep its exact format (${expectedFormat}) and do not invent unsupported facts.` },
+        { role: "system", content: `${systemInstruction(locale)} Revise only the supplied current artifact in response to the merchant's revision request. Return one flat JSON object with exactly this shape: ${contentShape[expectedFormat]}. Keep the artifact's original output language even when the revision instruction is Chinese. Do not invent unsupported facts.` },
         { role: "user", content: JSON.stringify({ context: contextForPrompt(context), current: current.content, revisionRequest: prompt }) },
       ], artifactContentSchema).then((content) => {
         if (content.format !== expectedFormat || (content.format === "amazon_listing" && !content.internalBrief && current.locale === "en-US")) {
@@ -253,39 +263,26 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
 }
 
 function getLlmConfig() {
-  const parsed = llmEnvironmentSchema.safeParse({
-    provider: process.env.LLM_PROVIDER,
-    apiKey: process.env.LLM_API_KEY,
-    baseUrl: process.env.LLM_BASE_URL || undefined,
-    model: process.env.LLM_MODEL,
-  });
-  return parsed.success ? {
-    apiKey: parsed.data.apiKey,
-    baseUrl: parsed.data.baseUrl,
-    model: parsed.data.model,
-  } : null;
+  return generationConfig(process.env);
 }
 
 export function getAiAdapter() {
   const config = getLlmConfig();
   if (!config) return null;
   try {
-    return createOpenAICompatibleAdapters(config).ai;
+    const timeout = Number(process.env.LLM_TIMEOUT_MS);
+    const timeoutMs = Number.isInteger(timeout) && timeout >= 1000 && timeout <= 120000 ? timeout : undefined;
+    return createOpenAICompatibleAdapters({ ...config, timeoutMs }).ai;
   } catch {
     return null;
   }
 }
 
 export function getTranscriptionAdapter() {
-  const provider = process.env.TRANSCRIPTION_PROVIDER || process.env.LLM_PROVIDER;
-  const apiKey = process.env.TRANSCRIPTION_API_KEY || process.env.LLM_API_KEY;
-  if (provider !== "openai_compatible" || !apiKey) return null;
-  const baseUrl = process.env.TRANSCRIPTION_BASE_URL || process.env.LLM_BASE_URL || "https://api.openai.com/v1";
-  const model = process.env.TRANSCRIPTION_MODEL || "whisper-1";
-  const parsed = z.object({ apiKey: z.string().min(1), baseUrl: z.url(), model: z.string().min(1) }).safeParse({ apiKey, baseUrl, model });
-  if (!parsed.success) return null;
+  const config = transcriptionConfig(process.env);
+  if (!config) return null;
   try {
-    return createOpenAICompatibleAdapters(parsed.data).transcription;
+    return createOpenAICompatibleAdapters(config).transcription;
   } catch {
     return null;
   }

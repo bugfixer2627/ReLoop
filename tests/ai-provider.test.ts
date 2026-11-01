@@ -28,6 +28,8 @@ describe("OpenAI-compatible provider adapter", () => {
     const [, init] = fetcher.mock.calls[0];
     expect(JSON.parse(String(init?.body))).toMatchObject({ model: "test-model", response_format: { type: "json_object" } });
     expect(JSON.stringify(init?.body)).not.toContain("test-key");
+    const payload = JSON.parse(String(init?.body));
+    expect(JSON.parse(payload.messages[1].content)).toEqual({ feedbackText: demoBundle.case.feedbackText, feedbackLocale: demoBundle.case.feedbackLocale });
   });
 
   it("rejects content that does not match the platform-specific schema", async () => {
@@ -37,6 +39,16 @@ describe("OpenAI-compatible provider adapter", () => {
     await expect(adapter().ai.generateListing(demoBundle, "alibaba_intl")).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
   });
 
+  it("validates JSON inside the organizer gateway's exact escape envelope", async () => {
+    fetcher.mockResolvedValueOnce(response({ choices: [{ message: { content: '<escape>{"issue":"Short runtime","customerClaim":null,"unknowns":["conditions"]}</escape>' } }] }));
+    expect((await adapter().ai.extract(demoBundle)).issue).toBe("Short runtime");
+  });
+
+  it.each(['prefix <escape>{"issue":"test","customerClaim":null,"unknowns":[]}</escape>', '<escape>{"issue":42}</escape>', '<escape><escape>{"issue":"test"}</escape></escape>'])("does not salvage prose or invalid schemas from gateway output", async (content) => {
+    fetcher.mockResolvedValueOnce(response({ choices: [{ message: { content } }] }));
+    await expect(adapter().ai.extract(demoBundle)).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
+  });
+
   it("maps provider throttling without exposing provider response text", async () => {
     fetcher.mockResolvedValueOnce(response({ error: { message: "private provider detail" } }, 429));
     const error = await adapter().ai.extract(demoBundle).catch((reason: unknown) => reason);
@@ -44,6 +56,11 @@ describe("OpenAI-compatible provider adapter", () => {
     expect(error).toMatchObject({ code: "RATE_LIMITED", status: 429, retryable: true });
     expect((error as Error).message).not.toContain("private");
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([401, 403])("maps rejected credentials (%s) to configuration failure without exposing provider details", async (status) => {
+    fetcher.mockResolvedValueOnce(response({ error: { message: "private credential information" } }, status));
+    await expect(adapter().ai.extract(demoBundle)).rejects.toMatchObject({ code: "NOT_CONFIGURED", status: 503, retryable: false });
   });
 
   it("uses verbose speech output and returns measured duration", async () => {

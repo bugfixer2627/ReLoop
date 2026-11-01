@@ -122,9 +122,18 @@ export async function POST(request: Request) {
     return apiFailure("UNSUPPORTED_AUDIO", "Use WebM, MP4, MP3, WAV or Ogg audio.", 415);
   }
 
+  const audioBytes = new Uint8Array(await audio.arrayBuffer());
+  const startsWith = (values: number[]) => values.every((value, index) => audioBytes[index] === value);
+  const signatureValid = mimeType === "audio/webm" ? startsWith([0x1a, 0x45, 0xdf, 0xa3])
+    : mimeType === "audio/ogg" ? startsWith([0x4f, 0x67, 0x67, 0x53])
+      : mimeType === "audio/mp4" ? String.fromCharCode(...audioBytes.subarray(4, 8)) === "ftyp"
+        : mimeType === "audio/mpeg" ? startsWith([0x49, 0x44, 0x33]) || (audioBytes[0] === 0xff && (audioBytes[1] & 0xe0) === 0xe0)
+          : wavDurationSeconds(audioBytes) !== null;
+  if (!signatureValid) return apiFailure("UNSUPPORTED_AUDIO", "The recording does not match its declared audio format.", 415);
+
   if (mimeType === "audio/wav") {
-    const localDuration = wavDurationSeconds(new Uint8Array(await audio.arrayBuffer()));
-    if (localDuration !== null && localDuration > MAX_AUDIO_SECONDS) {
+    const localDuration = wavDurationSeconds(audioBytes)!;
+    if (localDuration > MAX_AUDIO_SECONDS) {
       return apiFailure("AUDIO_TOO_LARGE", "Audio must be no longer than 60 seconds.", 413);
     }
   }
@@ -133,7 +142,7 @@ export async function POST(request: Request) {
   if (!transcription) return apiFailure("NOT_CONFIGURED", "Speech transcription is not configured.", 503);
 
   try {
-    const result = await transcription.transcribe(new Uint8Array(await audio.arrayBuffer()), mimeType, locale.data);
+    const result = await transcription.transcribe(audioBytes, mimeType, locale.data);
     if (result.durationSeconds > MAX_AUDIO_SECONDS) {
       return apiFailure("AUDIO_TOO_LARGE", "Audio must be no longer than 60 seconds.", 413);
     }

@@ -8,7 +8,7 @@ export type ExtractedFeedback = z.infer<typeof feedbackExtractionSchema>;
 // Every provider result is untrusted until parsed by Zod and checked against sources.
 export interface AiAdapter {
   extract(context: CaseBundle): Promise<ExtractedFeedback>;
-  summarize(context: CaseBundle, locale: InputLocale): Promise<ArtifactContent>;
+  summarize(context: CaseBundle, locale: InputLocale, extraction?: ExtractedFeedback): Promise<ArtifactContent>;
   generateSupport(context: CaseBundle): Promise<ArtifactContent>;
   generateListing(context: CaseBundle, platform: Platform): Promise<ArtifactContent>;
   revise(context: CaseBundle, current: ArtifactVersion, prompt: string, locale: InputLocale): Promise<ArtifactContent>;

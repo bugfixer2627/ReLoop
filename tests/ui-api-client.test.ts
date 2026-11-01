@@ -8,6 +8,15 @@ const token = 'local-test-token';
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('typed UI API adapter', () => {
+  it.each([['audio/webm;codecs=opus', 'webm'], ['audio/mp4', 'mp4'], ['audio/mpeg', 'mp3'], ['audio/wav', 'wav'], ['audio/ogg', 'ogg']])('uses the matching upload extension and forwards cancellation for %s', async (mime, extension) => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ ok: true, data: { text: 'Test transcript', locale: 'en-US', requiresConfirmation: true }, error: null, requestId }));
+    vi.stubGlobal('fetch', fetch);
+    const controller = new AbortController();
+    await transcribeAudio(token, new Blob(['synthetic test bytes'], { type: mime }), 'en-US', controller.signal);
+    const options = fetch.mock.calls[0][1];
+    expect(options.signal).toBe(controller.signal);
+    expect((options.body as FormData).get('audio')).toMatchObject({ name: 'instruction.' + extension });
+  });
   it('loads the real case-list contract with a bearer token and no caching', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       ok: true, data: { cases: [demoBundle.case] }, error: null, requestId,

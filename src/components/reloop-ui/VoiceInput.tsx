@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ApiRequestError, transcribeAudio } from '@/lib/frontend/api-client';
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS } from '@/lib/contracts';
 import { useWorkspace } from './WorkspaceProviders';
@@ -23,12 +23,19 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
   const tooLargeRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const pendingRef = useRef(false);
+  const uploadRef = useRef<AbortController | null>(null);
+  const transcriptId = useId();
   const chinese = locale === 'zh-CN';
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      pendingRef.current = false;
+      discardRef.current = true;
+      uploadRef.current?.abort();
+      chunksRef.current = [];
       if (timerRef.current) clearTimeout(timerRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -42,20 +49,23 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
   }
 
   async function startRecording() {
-    if (!accessToken || disabled || state === 'requesting' || state === 'recording') return;
+    if (!accessToken || disabled || pendingRef.current || state === 'recording' || state === 'transcribing') return;
+    pendingRef.current = true;
     setMessage('');
     setTranscript('');
     setState('requesting');
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      pendingRef.current = false;
       setState('error');
       setMessage(chinese ? '此浏览器不支持录音，请改用文字输入。' : 'Recording is not supported by this browser. Use text input instead.');
       return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      pendingRef.current = false;
       if (!mountedRef.current) { stream.getTracks().forEach((track) => track.stop()); return; }
       streamRef.current = stream;
-      const preferred = ['audio/webm;codecs=opus', 'audio/webm'];
+      const preferred = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
       const mimeType = preferred.find((type) => MediaRecorder.isTypeSupported(type));
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       recorderRef.current = recorder;
@@ -68,11 +78,22 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
         const size = chunksRef.current.reduce((total, chunk) => total + chunk.size, 0);
         if (size > MAX_AUDIO_BYTES) {
           tooLargeRef.current = true;
-          recorder.stop();
+          if (recorder.state === 'recording') recorder.stop();
           if (mountedRef.current) {
             setState('error');
-          setMessage(chinese ? '录音超过 10 MiB 限制，未发送。请缩短录音或改用文字。' : 'Recording exceeded 10 MiB and was not sent. Shorten it or use text input.');
+            setMessage(chinese ? '录音超过 10 MiB 限制，未发送。请缩短录音或改用文字。' : 'Recording exceeded 10 MiB and was not sent. Shorten it or use text input.');
           }
+        }
+      };
+      recorder.onerror = () => {
+        discardRef.current = true;
+        chunksRef.current = [];
+        if (timerRef.current) clearTimeout(timerRef.current);
+        releaseStream();
+        if (recorder.state === 'recording') recorder.stop();
+        if (mountedRef.current) {
+          setState('error');
+          setMessage(chinese ? '录音中断，已丢弃音频。请重试或改用文字。' : 'Recording failed and the audio was discarded. Retry or type instead.');
         }
       };
       recorder.onstop = () => {
@@ -89,19 +110,21 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
         }
         setState('transcribing');
         if (!accessToken) return;
-        transcribeAudio(accessToken, audio, locale).then((result) => {
-          if (!mountedRef.current) return;
+        const controller = new AbortController();
+        uploadRef.current = controller;
+        transcribeAudio(accessToken, audio, locale, controller.signal).then((result) => {
+          if (!mountedRef.current || controller.signal.aborted) return;
           setTranscript(result.text);
           setState('preview');
           setMessage('');
         }).catch((error: unknown) => {
-          if (!mountedRef.current) return;
+          if (!mountedRef.current || controller.signal.aborted) return;
           setState('error');
           setMessage(error instanceof ApiRequestError && error.code === 'NOT_IMPLEMENTED'
             ? (chinese ? '语音转写服务尚未接入。录音已丢弃，请改用文字输入。' : 'Speech-to-text is not implemented. The recording was discarded; use text input instead.')
             : error instanceof ApiRequestError ? error.message
               : (chinese ? '转写失败，录音已丢弃。请改用文字输入。' : 'Transcription failed. The recording was discarded; use text input instead.'));
-        });
+        }).finally(() => { if (uploadRef.current === controller) uploadRef.current = null; });
       };
       recorder.start(250);
       setState('recording');
@@ -109,6 +132,7 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
         if (recorder.state === 'recording') recorder.stop();
       }, MAX_AUDIO_SECONDS * 1000);
     } catch (error) {
+      pendingRef.current = false;
       releaseStream();
       setState('error');
       const denied = error instanceof DOMException && error.name === 'NotAllowedError';
@@ -122,15 +146,24 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
     discardRef.current = discard;
     if (timerRef.current) clearTimeout(timerRef.current);
     const recorder = recorderRef.current;
-    if (recorder?.state === 'recording') recorder.stop();
+    if (recorder?.state === 'recording') {
+      if (!discard) setState('transcribing');
+      recorder.stop();
+    }
     else releaseStream();
     if (discard) {
       chunksRef.current = [];
       setState('idle');
       setMessage('');
-    } else if (recorder?.state === 'recording') {
-      setState('transcribing');
     }
+  }
+
+  function cancelUpload() {
+    uploadRef.current?.abort();
+    uploadRef.current = null;
+    setTranscript('');
+    setState('idle');
+    setMessage('');
   }
 
   const buttons = state === 'recording' ? (
@@ -143,7 +176,8 @@ export function VoiceInput({ onConfirmed, disabled = false }: {
     <div className="voice-input">
       <div className="voice-box"><div>{buttons}</div><div className="voice-description"><strong>{state === 'recording' ? (chinese ? '正在錄音…最長 60 秒' : 'Recording… up to 60 seconds') : state === 'transcribing' ? (chinese ? '正在轉寫…' : 'Transcribing…') : (chinese ? '中文 / English 語音輸入' : 'Chinese / English voice input')}</strong><p>{state === 'recording' ? (chinese ? '停止後會先顯示可編輯文本。' : 'A transcript preview appears after stopping.') : (chinese ? '文字輸入始終可用；錄音不會自動提交。' : 'Typing remains available. Recording never submits automatically.')}</p></div></div>
       {state === 'error' && message && <p className="voice-error" role="alert">{message}</p>}
-      {state === 'preview' && <div className="voice-transcript"><label htmlFor="transcript-preview">{chinese ? '確認轉寫內容' : 'Confirm transcript'}</label><textarea id="transcript-preview" className="textarea" rows={3} value={transcript} onChange={(event) => setTranscript(event.target.value)}/><div className="voice-controls"><button className="btn btn-primary btn-sm" type="button" disabled={!transcript.trim()} onClick={() => { onConfirmed(transcript.trim()); setTranscript(''); setState('idle'); }}>{chinese ? '使用轉寫文字' : 'Use transcript'}</button><button className="btn btn-soft btn-sm" type="button" onClick={() => { setTranscript(''); setState('idle'); }}>{chinese ? '丟棄轉寫' : 'Discard transcript'}</button></div></div>}
+      {state === 'transcribing' && <button className="btn btn-soft btn-sm" type="button" onClick={cancelUpload}>{chinese ? '取消转写' : 'Cancel transcription'}</button>}
+      {state === 'preview' && <div className="voice-transcript"><label htmlFor={transcriptId}>{chinese ? '確認轉寫內容' : 'Confirm transcript'}</label><textarea id={transcriptId} className="textarea" rows={3} value={transcript} onChange={(event) => setTranscript(event.target.value)}/><div className="voice-controls"><button className="btn btn-primary btn-sm" type="button" disabled={!transcript.trim()} onClick={() => { onConfirmed(transcript.trim()); setTranscript(''); setState('idle'); }}>{chinese ? '使用轉寫文字' : 'Use transcript'}</button><button className="btn btn-soft btn-sm" type="button" onClick={() => { setTranscript(''); setState('idle'); }}>{chinese ? '丟棄轉寫' : 'Discard transcript'}</button></div></div>}
       {state === 'requesting' && <p className="api-state" role="status">{chinese ? '請求麥克風權限…' : 'Requesting microphone permission…'}</p>}
     </div>
   );
