@@ -44,7 +44,10 @@ try {
       const digest = createHash("sha256").update(sql).digest("hex");
       const result = await client.query("select sha256 from public.reloop_schema_migrations where name = $1", [name]);
       if (result.rows.length) {
-        if (result.rows[0].sha256 !== digest) throw new Error("An applied migration changed. Add a new migration instead.");
+        const lf = sql.replace(/\r\n/g, "\n");
+        const lineEndingDigests = [lf, lf.replace(/\n/g, "\r\n")]
+          .map((variant) => createHash("sha256").update(variant).digest("hex"));
+        if (!lineEndingDigests.includes(result.rows[0].sha256)) throw new Error("An applied migration changed. Add a new migration instead.");
         continue;
       }
       await client.query(sql);
