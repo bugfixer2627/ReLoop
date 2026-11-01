@@ -419,15 +419,24 @@
 .reloop-ui .feedback-form .field-error { margin:0; color:#a23d38; font-size:12px; }
 .reloop-ui .feedback-form [aria-invalid="true"] { border-color:#a23d38; }
 .reloop-ui .saved-submission .case-back-link { margin-top:0; }
+.reloop-ui .case-load-problem { width:min(100%,720px); min-height:260px; margin:clamp(32px,8vh,80px) auto; padding:clamp(22px,4vw,36px); display:grid; grid-template-columns:44px minmax(0,1fr); align-content:center; align-items:start; gap:18px; }
+.reloop-ui .case-load-mark { width:42px; height:42px; display:grid; place-items:center; border-radius:11px; background:#f1f6e6; color:var(--forest); }
+.reloop-ui .case-load-content h2 { margin:0 0 8px; color:var(--ink); font-size:19px; font-weight:650; }
+.reloop-ui .case-load-content p { margin:0; color:var(--muted); font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
+.reloop-ui .case-load-content .case-recovery-actions { margin-top:17px; }
+.reloop-ui .feedback-page .heading-actions .btn { width:max-content; max-width:100%; flex:none; white-space:nowrap; }
 @media (max-width:1050px) {
   .reloop-ui .feedback-page .page-heading { display:block; }
   .reloop-ui .feedback-page .heading-actions { margin-top:14px; }
+  .reloop-ui .feedback-page .heading-actions { display:flex; width:max-content; max-width:100%; }
   .reloop-ui .app-shell .topbar { height:auto; grid-template-columns:minmax(0,1fr) auto; gap:12px; padding:16px 22px; }
   .reloop-ui .app-shell .navbar-search { grid-column:1 / -1; grid-row:2; max-width:none; }
   .reloop-ui .feedback-context-grid,.reloop-ui .feedback-writing-grid { grid-template-columns:minmax(0,1fr); gap:22px; }
   .reloop-ui .feedback-submit-row { align-items:flex-start; flex-direction:column; gap:14px; }
 }
 @media (max-width:760px) {
+  .reloop-ui .case-load-problem { min-height:220px; grid-template-columns:36px minmax(0,1fr); gap:14px; }
+  .reloop-ui .case-load-mark { width:36px; height:36px; }
   .reloop-ui .workspace-sign-out { display:none; }
   .reloop-ui .saved-case-identity dl { grid-template-columns:minmax(0,1fr); }
   .reloop-ui.sidebar-collapsed .sidebar { width:280px; padding:22px 15px; }

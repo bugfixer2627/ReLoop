@@ -6,13 +6,15 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { openUiBrowser } from './lib/ui-browser.mjs';
 
 const base = process.env.RELOOP_BASE_URL ?? 'http://127.0.0.1:3017';
-const evidence = '.local-reviews/integration-evidence/phase2b';
+const evidence = '.local-reviews/integration-evidence/phase2c';
 const original = JSON.parse(await readFile(new URL('../src/lib/fixtures/demo.json', import.meta.url), 'utf8'));
 const id = original.case.id;
 const missingId = '00000000-0000-4000-8000-000000000404';
 const requestId = '00000000-0000-4000-8000-000000000999';
 const browser = await openUiBrowser(Number(process.env.RELOOP_CDP_PORT ?? 9222));
 const results = [];
+const browserErrors = [];
+const expectedApiFailures = [];
 const requests = [];
 let listMode = 'success';
 let createMode = 'success';
@@ -80,6 +82,13 @@ async function expectText(expression, text) {
 }
 
 try {
+  browser.on('Runtime.exceptionThrown', ({ exceptionDetails }) => browserErrors.push(exceptionDetails.text ?? 'Browser exception'));
+  browser.on('Log.entryAdded', ({ entry }) => {
+    if (entry.level !== 'error') return;
+    if (entry.url.includes('/api/')) expectedApiFailures.push(entry.text);
+    else browserErrors.push(`${entry.url}: ${entry.text}`);
+  });
+  await browser.send('Log.enable');
   await browser.send('Fetch.enable', { patterns: [{ urlPattern: '*://*/api/*' }] });
   await browser.viewport(1440, 1080);
   await browser.navigate(`${base}/login`);
@@ -116,6 +125,11 @@ try {
   await route(`/cases/${missingId}`);
   await browser.waitFor("document.querySelector('.case-recovery-actions')");
   await expectText('document.body.innerText', 'no longer available');
+  assert.ok(await browser.evaluate("document.querySelector('.case-load-problem').offsetHeight >= 220"));
+  await browser.screenshot(`${evidence}/missing-case-1440.png`);
+  await browser.viewport(390, 844);
+  await browser.screenshot(`${evidence}/missing-case-390.png`, true);
+  await browser.viewport(1440, 1080);
   await browser.screenshot(`${evidence}/case-missing-1440.png`);
   await clientLink('.case-recovery-actions a', '/dashboard?view=investigation');
   await route('/cases/not-a-uuid/fix');
@@ -143,18 +157,41 @@ try {
   await browser.click('.feedback-form button[type=submit]');
   await expectText('document.body.innerText', 'Enter a valid SKU');
   assert.equal(await browser.evaluate('document.activeElement.id'), 'sku');
+  assert.equal(await browser.evaluate("document.querySelectorAll('.feedback-form [aria-invalid=true]').length"), 3);
+  assert.equal(await browser.evaluate("document.querySelectorAll('.feedback-form .field-error').length"), 3);
+  await browser.screenshot(`${evidence}/inbox-invalid-en-1440.png`, true);
   await browser.click('.topbar .language');
   await expectText('document.body.innerText', '请填写有效 SKU');
-  await browser.fill('#sku', 'RL-LAMP-01');
-  await browser.fill('#customer-feedback', 'Synthetic customer report stays in English.');
-  await browser.fill('#merchant-instruction', '请核对商品规格，保留原始反馈。');
+  await expectText('document.body.innerText', '请填写客户反馈');
+  await expectText('document.body.innerText', '请填写商家指令');
+  await browser.screenshot(`${evidence}/inbox-invalid-zh-1440.png`, true);
+  await browser.replaceText('#sku', 'RL-LAMP-01');
+  await browser.waitFor("document.querySelector('#sku').getAttribute('aria-invalid') !== 'true'");
+  assert.equal(await browser.evaluate("!!document.querySelector('#sku-error')"), false);
+  await browser.replaceText('#customer-feedback', 'Synthetic customer report stays in English.');
+  await browser.waitFor("document.querySelector('#customer-feedback').getAttribute('aria-invalid') !== 'true'");
+  assert.equal(await browser.evaluate("!!document.querySelector('#customer-feedback-error')"), false);
+  await browser.replaceText('#merchant-instruction', '请核对商品规格，保留原始反馈。');
+  await browser.waitFor("document.querySelector('#merchant-instruction').getAttribute('aria-invalid') !== 'true'");
+  assert.equal(await browser.evaluate("!!document.querySelector('#merchant-instruction-error')"), false);
   await browser.select('#merchant-locale', 'zh-CN');
-  await browser.screenshot(`${evidence}/inbox-zh-1440.png`);
+  await browser.screenshot(`${evidence}/inbox-corrected-zh-1440.png`, true);
   await browser.click('.topbar .language');
+  await expectText('document.body.innerText', 'Save the customer message');
+  assert.equal(await browser.evaluate("document.querySelectorAll('.feedback-form [aria-invalid=true]').length"), 0);
   assert.equal(await browser.evaluate("document.querySelector('#merchant-locale').value"), 'zh-CN');
   assert.equal(await browser.evaluate("document.querySelector('#customer-feedback').value"), 'Synthetic customer report stays in English.');
   assert.equal(await browser.evaluate("document.querySelector('#merchant-instruction').value"), '请核对商品规格，保留原始反馈。');
-  pass('Chinese/English labels and validation switch while source text and source-language values remain unchanged');
+  await browser.screenshot(`${evidence}/inbox-corrected-en-1440.png`, true);
+  pass('Each corrected field clears its own validation error; locale switching preserves source text and updates error copy');
+  for (const width of [768, 1024]) {
+    await browser.viewport(width, 900);
+    await browser.waitFor("document.querySelector('.feedback-page .heading-actions .btn')");
+    assert.equal(await browser.evaluate("getComputedStyle(document.querySelector('.feedback-page .heading-actions .btn')).whiteSpace"), 'nowrap');
+    assert.ok(await browser.evaluate("(()=>{const b=document.querySelector('.feedback-page .heading-actions .btn');return b.scrollWidth<=b.clientWidth&&b.getBoundingClientRect().right<=innerWidth})()"));
+    await browser.screenshot(`${evidence}/inbox-header-${width}.png`);
+  }
+  await browser.viewport(1440, 1080);
   assert.deepEqual(await browser.evaluate("[...document.querySelector('#channel').options].map(o=>o.value)"), ['shopify_us', 'amazon_de', 'alibaba_intl']);
   createMode = 'unknown-sku';
   await browser.click('.feedback-form button[type=submit]');
@@ -187,7 +224,7 @@ try {
   pass('Saved-case recovery opens the exact returned case ID and original stored input');
   await browser.click('.side-nav a:nth-child(4)');
   await browser.waitFor("document.querySelector('.case-back-link')");
-  for (const width of [320, 390, 768, 1440]) {
+  for (const width of [320, 390, 768, 1024, 1440]) {
     await browser.viewport(width, 1080);
     await browser.evaluate("window.scrollTo(0,document.body.scrollHeight)");
     assert.equal(await browser.evaluate("getComputedStyle(document.querySelector('.case-back-link')).display"), 'inline-flex');
@@ -207,7 +244,7 @@ try {
     await browser.screenshot(`${evidence}/inbox-en-${width}.png`);
     if (width === 390 || width === 1440) await browser.screenshot(`${evidence}/inbox-en-${width}-full.png`, true);
   }
-  pass('Feedback Inbox stays within 320, 390, 768 and 1440px widths');
+  pass('Feedback Inbox stays within 320, 390, 768, 1024 and 1440px widths');
   await browser.viewport(390, 1080);
   await browser.click('.mobile-menu');
   await browser.waitFor("document.querySelector('.sidebar[role=dialog]')");
@@ -221,6 +258,9 @@ try {
   await browser.click('.sidebar-mobile-actions button:last-child');
   await browser.waitFor("location.pathname === '/login'");
   pass('Existing desktop/mobile language controls work, and explicit mobile sign-out keeps the current access flow');
+  assert.deepEqual(browserErrors, [], `Browser console/hydration errors: ${browserErrors.join('; ')}`);
+  pass('No browser runtime exceptions, console errors, or hydration errors');
+  pass(`${expectedApiFailures.length} expected non-2xx intercepted API fixture responses were exercised as UI error states`);
   pass('All API responses in this run were intercepted synthetic fixtures; no live persistence or AI success is claimed');
   await mkdir(evidence, { recursive: true });
   await writeFile(`${evidence}/browser-results.json`, JSON.stringify({ frontendFixtures: true, results, requests: requests.map(({ method, path }) => ({ method, path })) }, null, 2));

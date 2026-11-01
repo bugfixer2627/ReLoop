@@ -7,7 +7,9 @@ import { platformDefinitions } from '@/lib/config/platforms';
 import { caseDestination, caseHref, navigationCaseId } from '@/lib/frontend/case-navigation';
 import { ApiRequestError } from '@/lib/frontend/api-client';
 import { requestMessage } from '@/lib/frontend/request-message';
+import { caseFieldIsInvalid, updateInvalidFields, type CaseInput } from '@/lib/frontend/case-validation';
 import { SavedCaseIdentity } from '@/components/reloop-ui/SavedCaseIdentity';
+import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
 import FeedbackPage from '@/app/(dashboard)/feedback/page';
 import InvestigationClient from '@/app/(dashboard)/cases/[id]/investigation-client';
 
@@ -91,5 +93,40 @@ describe('Feedback Inbox presentation and contracts', () => {
     expect(requestMessage(error, 'zh-CN', 'save')).toContain('未找到该 SKU');
     expect(requestMessage(error, 'en-US', 'save')).toContain('No product matches');
     expect(requestMessage(new ApiRequestError(404, 'NOT_FOUND', 'Not found', false), 'zh-CN', 'case')).toContain('请选择其他已保存案例');
+  });
+});
+
+describe('Feedback Inbox field validation updates', () => {
+  const input: CaseInput = {
+    sku: 'RL-LAMP-01', channel: 'shopify_us', feedbackText: 'Synthetic customer report',
+    feedbackLocale: 'en-US', merchantInstruction: 'Check the documented runtime.',
+    merchantLocale: 'en-US', synthetic: true,
+  };
+
+  it.each([
+    ['sku', '   ', 'RL-LAMP-01'],
+    ['feedbackText', '  ', 'Customer report after correction'],
+    ['merchantInstruction', '  ', 'Check evidence after correction'],
+  ] as const)('keeps %s invalid until the corrected value satisfies the shared schema', (field, invalidValue, correctedValue) => {
+    expect(caseFieldIsInvalid(input, field, invalidValue)).toBe(true);
+    expect(caseFieldIsInvalid(input, field, correctedValue)).toBe(false);
+  });
+
+  it('clears only the corrected field and retains errors on the other fields', () => {
+    const errors = ['sku', 'feedbackText', 'merchantInstruction'] as const;
+    expect(updateInvalidFields([...errors], 'sku', false)).toEqual(['feedbackText', 'merchantInstruction']);
+    expect(updateInvalidFields(['feedbackText'], 'feedbackText', true)).toEqual(['feedbackText']);
+  });
+
+  it.each(['en-US', 'zh-CN'])('renders bounded missing-case recovery with localized actions for %s', (locale) => {
+    const html = renderToStaticMarkup(createElement(CaseLoadProblem, {
+      message: locale === 'zh-CN' ? '案例不可用。' : 'Case unavailable.',
+      locale, destination: 'investigation', retry: vi.fn(),
+    }));
+    expect(html).toContain('case-load-problem');
+    expect(html).toContain(locale === 'zh-CN' ? '无法打开此案例' : 'Unable to open this case');
+    expect(html).toContain('href="/dashboard?view=investigation"');
+    expect(html).toContain(locale === 'zh-CN' ? '选择其他案例' : 'Choose another case');
+    expect(html).toContain(locale === 'zh-CN' ? '重试' : 'Retry');
   });
 });

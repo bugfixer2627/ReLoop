@@ -52,6 +52,10 @@ export async function openUiBrowser(port = 9222) {
     fill: async (selector, value) => {
       await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}); const proto=e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto,'value').set.call(e,${JSON.stringify(value)}); e.dispatchEvent(new Event('input',{bubbles:true}));})()`);
     },
+    async replaceText(selector, value) {
+      await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.focus();e.select()})()`);
+      await send('Input.insertText', { text: value });
+    },
     select: (selector, value) => evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}); e.value=${JSON.stringify(value)}; e.dispatchEvent(new Event('change',{bubbles:true}));})()`),
     async screenshot(path, fullPage = false) {
       await mkdir(dirname(path), { recursive: true });

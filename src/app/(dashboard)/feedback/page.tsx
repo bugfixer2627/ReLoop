@@ -10,12 +10,11 @@ import { rememberCase } from '@/components/reloop-ui/useSelectedCase';
 import { VoiceInput } from '@/components/reloop-ui/VoiceInput';
 import { ApiRequestError, analyzeCase, createCase } from '@/lib/frontend/api-client';
 import { requestMessage } from '@/lib/frontend/request-message';
+import { caseFieldIsInvalid, updateInvalidFields, type CaseInput, type CaseInputField } from '@/lib/frontend/case-validation';
 import { demoBundle } from '@/lib/fixtures/demo';
 import { platformLabel } from '@/lib/config/platforms';
 import { createCaseRequestSchema, inputLocaleSchema, platformSchema, type InputLocale, type Platform } from '@/lib/contracts';
-import type { z } from 'zod';
 
-type CaseInput = z.infer<typeof createCaseRequestSchema>;
 const fieldIds: Record<string, string> = { sku: 'sku', channel: 'channel', feedbackText: 'customer-feedback', merchantInstruction: 'merchant-instruction', feedbackLocale: 'feedback-locale', merchantLocale: 'merchant-locale' };
 
 export default function FeedbackPage() {
@@ -29,7 +28,7 @@ export default function FeedbackPage() {
   const [customerFeedback, setCustomerFeedback] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<{ reason: unknown; stage: 'save' | 'analysis' } | null>(null);
-  const [validatedFields, setInvalidFields] = useState<string[]>([]);
+  const [validatedFields, setInvalidFields] = useState<CaseInputField[]>([]);
   const [saved, setSaved] = useState<{ id: string; input: CaseInput } | null>(null);
   const [analysisUnavailable, setAnalysisUnavailable] = useState(false);
   const text = locale === 'zh-CN' ? {
@@ -70,7 +69,19 @@ export default function FeedbackPage() {
   const canRetrySavedCase = !!saved && currentInput.success && JSON.stringify(saved.input) === JSON.stringify(currentInput.data);
   const invalidFields = currentInput.success ? [] : validatedFields.filter((field) => currentInput.error.issues.some((issue) => issue.path[0] === field));
 
-  function fieldError(field: string) {
+  function updateField(field: CaseInputField, value: string, update: (value: string) => void) {
+    update(value);
+    if (!validatedFields.includes(field)) return;
+
+    const input: CaseInput = {
+      sku, channel: platform, feedbackText: customerFeedback, feedbackLocale,
+      merchantInstruction, merchantLocale, synthetic: true, [field]: value,
+    };
+    const remainsInvalid = caseFieldIsInvalid(input, field, value);
+    setInvalidFields((fields) => updateInvalidFields(fields, field, remainsInvalid));
+  }
+
+  function fieldError(field: CaseInputField) {
     if (!invalidFields.includes(field)) return null;
     const message = field === 'sku' ? text.skuError : field === 'feedbackText' ? text.complaintError : field === 'merchantInstruction' ? text.instructionError : text.languageError;
     return <p id={`${fieldIds[field]}-error`} className="field-error">{message}</p>;
@@ -94,9 +105,9 @@ export default function FeedbackPage() {
     if (!accessToken || saving) return;
     setError(null);
     if (!currentInput.success) {
-      const fields = currentInput.error.issues.map((issue) => String(issue.path[0]));
+      const fields = currentInput.error.issues.map((issue) => issue.path[0]).filter((field): field is CaseInputField => field === 'sku' || field === 'feedbackText' || field === 'merchantInstruction');
       setInvalidFields(fields);
-      document.getElementById(fieldIds[fields[0]])?.focus();
+      if (fields[0]) document.getElementById(fieldIds[fields[0]])?.focus();
       return;
     }
     setInvalidFields([]);
@@ -129,7 +140,7 @@ export default function FeedbackPage() {
           <fieldset className="feedback-section feedback-product" disabled={saving}>
             <legend>{text.product}</legend>
             <div className="feedback-context-grid">
-              <div className="field"><label htmlFor="sku">{text.sku}</label><input id="sku" name="sku" className="input" autoComplete="off" spellCheck={false} required maxLength={100} value={sku} placeholder={text.skuPlaceholder} aria-invalid={invalidFields.includes('sku')} aria-describedby={`sku-hint${invalidFields.includes('sku') ? ' sku-error' : ''}`} onChange={(event) => setSku(event.target.value)}/><p id="sku-hint" className="feedback-helper">{text.skuHint}</p>{fieldError('sku')}</div>
+              <div className="field"><label htmlFor="sku">{text.sku}</label><input id="sku" name="sku" className="input" autoComplete="off" spellCheck={false} required maxLength={100} value={sku} placeholder={text.skuPlaceholder} aria-invalid={invalidFields.includes('sku')} aria-describedby={`sku-hint${invalidFields.includes('sku') ? ' sku-error' : ''}`} onChange={(event) => updateField('sku', event.target.value, setSku)}/><p id="sku-hint" className="feedback-helper">{text.skuHint}</p>{fieldError('sku')}</div>
               <div className="field"><label htmlFor="channel">{text.platform}</label><select id="channel" name="channel" className="select" value={platform} onChange={(event) => setPlatform(platformSchema.parse(event.target.value))}>{platformSchema.options.map((id) => <option key={id} value={id}>{platformLabel(id, locale)}</option>)}</select><p className="feedback-helper">{text.platformHint}</p></div>
             </div>
             <p className="feedback-helper feedback-output-note">{text.outputHint}</p>
@@ -138,12 +149,12 @@ export default function FeedbackPage() {
             <fieldset className="feedback-section" disabled={saving}>
               <legend>{text.complaint}</legend>
               <div className="field"><label htmlFor="feedback-locale">{text.feedbackLanguage}</label><select id="feedback-locale" name="feedbackLocale" className="select" value={feedbackLocale} onChange={(event) => setFeedbackLocale(inputLocaleSchema.parse(event.target.value))}>{languageOptions}</select></div>
-              <div className="field"><label htmlFor="customer-feedback">{text.complaint}</label><textarea id="customer-feedback" name="feedbackText" className="textarea" rows={7} required maxLength={10000} value={customerFeedback} placeholder={text.complaintPlaceholder} aria-invalid={invalidFields.includes('feedbackText')} aria-describedby={`feedback-hint${invalidFields.includes('feedbackText') ? ' customer-feedback-error' : ''}`} onChange={(event) => setCustomerFeedback(event.target.value)}/>{fieldError('feedbackText')}<p id="feedback-hint" className="feedback-helper">{text.complaintHint}</p></div>
+              <div className="field"><label htmlFor="customer-feedback">{text.complaint}</label><textarea id="customer-feedback" name="feedbackText" className="textarea" rows={7} required maxLength={10000} value={customerFeedback} placeholder={text.complaintPlaceholder} aria-invalid={invalidFields.includes('feedbackText')} aria-describedby={`feedback-hint${invalidFields.includes('feedbackText') ? ' customer-feedback-error' : ''}`} onChange={(event) => updateField('feedbackText', event.target.value, setCustomerFeedback)}/>{fieldError('feedbackText')}<p id="feedback-hint" className="feedback-helper">{text.complaintHint}</p></div>
             </fieldset>
             <fieldset className="feedback-section" disabled={saving}>
               <legend>{text.instruction}</legend>
               <div className="field"><label htmlFor="merchant-locale">{text.merchantLanguage}</label><select id="merchant-locale" name="merchantLocale" className="select" value={merchantLocale} onChange={(event) => setMerchantLocale(inputLocaleSchema.parse(event.target.value))}>{languageOptions}</select></div>
-              <div className="field"><label htmlFor="merchant-instruction">{text.instruction}</label><textarea id="merchant-instruction" name="merchantInstruction" className="textarea" rows={4} required maxLength={4000} value={merchantInstruction} placeholder={text.instructionPlaceholder} aria-invalid={invalidFields.includes('merchantInstruction')} aria-describedby={`instruction-hint${invalidFields.includes('merchantInstruction') ? ' merchant-instruction-error' : ''}`} onChange={(event) => setMerchantInstruction(event.target.value)}/>{fieldError('merchantInstruction')}<p id="instruction-hint" className="feedback-helper">{text.instructionHint}</p></div>
+              <div className="field"><label htmlFor="merchant-instruction">{text.instruction}</label><textarea id="merchant-instruction" name="merchantInstruction" className="textarea" rows={4} required maxLength={4000} value={merchantInstruction} placeholder={text.instructionPlaceholder} aria-invalid={invalidFields.includes('merchantInstruction')} aria-describedby={`instruction-hint${invalidFields.includes('merchantInstruction') ? ' merchant-instruction-error' : ''}`} onChange={(event) => updateField('merchantInstruction', event.target.value, setMerchantInstruction)}/>{fieldError('merchantInstruction')}<p id="instruction-hint" className="feedback-helper">{text.instructionHint}</p></div>
               <div className="feedback-voice"><h3>{text.voice}</h3><VoiceInput disabled={saving} inputLocale={merchantLocale} onConfirmed={(value) => setMerchantInstruction((current) => current ? `${current}\n${value}` : value)}/></div>
             </fieldset>
           </div>
