@@ -14,7 +14,7 @@
     { "locale": "ar-AE", "priority": "P2", "generationStatus": "unavailable", "speechStatus": "unavailable" }
   ],
   "aiProvider": { "protocol": "openai_compatible", "verifiedBaseUrl": "https://api.tokenhubcloud.net/v1", "verifiedModel": "gpt-5.6-luna", "credentials": "local_or_host_secret_only" },
-  "transcriptionProvider": { "backend": "faster_whisper_local_cpu_or_separate_compatible_service", "localModel": "multilingual_base_int8", "realRecordedAudio": "zh_CN_and_en_US_verified_both_contexts", "browser": "SpeechRecognition_vendor_service_acceptance_failed", "physicalMicrophone": "pending", "organizerAudioSupported": false },
+  "transcriptionProvider": { "backend": "faster_whisper_local_cpu_or_separate_compatible_service", "localModel": "multilingual_base_int8", "realRecordedAudio": "zh_CN_and_en_US_verified_both_contexts", "browser": "SpeechRecognition_vendor_service_acceptance_failed", "physicalMicrophone": "configured_STT_zh_CN_and_en_US_confirmed_by_user; browser_mode_not_itemized", "organizerAudioSupported": false },
   "validationCategories": ["evidence", "market_law", "platform_rule"],
   "competitionValidationCategories": ["market_law", "platform_rule"],
   "revisions": { "artifactKinds": ["support_reply", "listing_correction"], "demoFollowUpsPerKind": 2, "preserveHistory": true, "reviewByVersion": true },
