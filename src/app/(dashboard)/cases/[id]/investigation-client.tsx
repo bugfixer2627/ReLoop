@@ -6,25 +6,17 @@ import { useCaseBundle } from '@/components/reloop-ui/useCaseBundle';
 import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
 import { casePlatformLabel } from '@/lib/frontend/api-client';
 import { platformDefinitions } from '@/lib/config/platforms';
-import { findingCategorySchema, type ArtifactContent } from '@/lib/contracts';
-import type { z } from 'zod';
+import type { ArtifactContent } from '@/lib/contracts';
 import { Icon } from '@/components/reloop-ui/icons';
 import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
 import { SavedCaseIdentity } from '@/components/reloop-ui/SavedCaseIdentity';
+import { caseReference } from '@/lib/frontend/case-reference';
+import { findingCategoryLabel, severityLabel, ruleStatusLabel } from '@/lib/frontend/status-labels';
 
 function fieldText(value: unknown) {
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return String(value);
   return '';
-}
-
-function categoryLabel(category: z.infer<typeof findingCategorySchema>, locale: string) {
-  const labels = {
-    evidence: locale === 'zh-CN' ? '证据核对' : 'Evidence check',
-    market_law: locale === 'zh-CN' ? '目标市场法规' : 'Market law',
-    platform_rule: locale === 'zh-CN' ? '平台规则' : 'Platform rule',
-  };
-  return labels[category];
 }
 
 function artifactSummary(content: ArtifactContent) {
@@ -62,7 +54,7 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
         {loading && <div className="card card-pad api-state" role="status">{text.loading}</div>}
         {!loading && (error || !bundle) && <CaseLoadProblem message={error ?? text.missing} locale={locale} destination="investigation" retry={retry}/>}
         {!loading && !error && bundle && <>
-          <PageHeading eyebrow={`${text.data} · ${bundle.case.id.slice(0, 8).toUpperCase()}`} title={text.title} description={`${bundle.product.name} · ${bundle.case.sku} · ${casePlatformLabel(bundle.case.channel)}`} actions={<Link href={`/cases/${bundle.case.id}/fix`} className="btn btn-primary btn-sm">{text.next}<Icon name="arrow" size={14}/></Link>}/>
+          <PageHeading eyebrow={`${text.data} · ${caseReference(bundle.case.id)}`} title={text.title} description={`${bundle.product.name} · ${bundle.case.sku} · ${casePlatformLabel(bundle.case.channel)}`} actions={<Link href={`/cases/${bundle.case.id}/fix`} className="btn btn-primary btn-sm">{text.next}<Icon name="arrow" size={14}/></Link>}/>
           {bundle.case.synthetic && <span className="badge badge-neutral">{text.synthetic}</span>}
           <SavedCaseIdentity caseRecord={bundle.case} product={bundle.product} locale={locale}/>
           <div className="metrics-grid investigation-metrics">
@@ -84,7 +76,7 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
             <div className="investigation-column">
               <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.findings}</span><span className="case-count">{bundle.findings.length}</span></div>
                 {bundle.findings.length === 0 && <div className="empty-state"><Icon name="search" size={20}/><strong>{text.noFindings}</strong></div>}
-                {bundle.findings.map((finding) => <article className="finding" key={finding.id}><div className={`finding-mark ${finding.severity === 'blocker' ? '' : 'finding-mark-soft'}`}>{finding.severity === 'blocker' ? '!' : finding.severity === 'warning' ? '·' : 'i'}</div><div><span className="badge badge-neutral">{categoryLabel(finding.category, locale)} · {finding.severity}</span><h4>{locale === 'zh-CN' ? finding.explanationZh : finding.explanationEn}</h4>{finding.originalSpan && <p className="compare-original">{finding.originalSpan}</p>}<small>{finding.sourceIds.join(' · ')}{finding.ruleId ? ` · ${finding.ruleId}` : ''}</small>{finding.ruleStatus === 'needs_rule_verification' && <p className="muted">{text.unverified}</p>}</div></article>)}
+                {bundle.findings.map((finding) => <article className="finding" key={finding.id}><div className={`finding-mark ${finding.severity === 'blocker' ? '' : 'finding-mark-soft'}`}>{finding.severity === 'blocker' ? '!' : finding.severity === 'warning' ? '·' : 'i'}</div><div><span className="badge badge-neutral">{findingCategoryLabel(finding.category, locale)} · {severityLabel(finding.severity, locale)}</span><h4>{locale === 'zh-CN' ? finding.explanationZh : finding.explanationEn}</h4>{finding.originalSpan && <p className="compare-original">{finding.originalSpan}</p>}<small>{finding.sourceIds.join(' · ')}{finding.ruleId ? ` · ${finding.ruleId}` : ''}</small>{finding.ruleStatus === 'needs_rule_verification' && <p className="muted">{ruleStatusLabel(finding.ruleStatus, locale)}</p>}</div></article>)}
               </section>
               <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.listings}</span><span className="case-count">{bundle.listings.length}</span></div>
                 {bundle.listings.length === 0 && <p className="muted">{text.noListings}</p>}
@@ -100,7 +92,7 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
           </div>
           <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.rules}</span><span className="case-count">{bundle.rules.length}</span></div>
             {bundle.rules.length === 0 && <p className="muted">{text.noRules}</p>}
-            {bundle.rules.map((rule) => <div className="source" key={rule.id}><div><a href={rule.sourceUrl} target="_blank" rel="noreferrer"><strong>{rule.id} ↗</strong></a><p>{rule.applicability}</p>{rule.excerpt && <blockquote>{rule.excerpt}</blockquote>}</div><span className={`badge ${rule.status === 'verified' ? 'badge-safe' : 'badge-review'}`}>{rule.status === 'verified' ? 'Verified' : text.unverified}</span></div>)}
+            {bundle.rules.map((rule) => <div className="source" key={rule.id}><div><a href={rule.sourceUrl} target="_blank" rel="noreferrer" aria-label={`${rule.id} (${locale === 'zh-CN' ? '在新窗口打开' : 'opens in a new window'})`}><strong>{rule.id} ↗</strong></a><p>{rule.applicability}</p>{rule.excerpt && <blockquote>{rule.excerpt}</blockquote>}</div><span className={`badge ${rule.status === 'verified' ? 'badge-safe' : 'badge-review'}`}>{ruleStatusLabel(rule.status, locale)}</span></div>)}
           </section>
         </>}
       </div>

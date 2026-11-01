@@ -7,16 +7,22 @@ import { caseBundleSchema } from '@/lib/contracts';
 import { casesCsv, filterCases, creationSeries } from '@/lib/frontend/case-list';
 import { navigationCaseId } from '@/lib/frontend/case-navigation';
 import { artifactText } from '@/lib/frontend/artifact-text';
+import { caseReference } from '@/lib/frontend/case-reference';
 import { CaseTable } from '@/components/reloop-ui/CaseTable';
 import { ArtifactWorkspace } from '@/components/reloop-ui/ArtifactWorkspace';
 import { SourceBrowser } from '@/components/reloop-ui/SourceBrowser';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/cases', useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/cases', useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock('@/components/reloop-ui/WorkspaceProviders', () => ({ useWorkspace: () => ({ locale: 'en-US', accessToken: 'test-token' }) }));
 
 const rows = [demoBundle.case, { ...demoBundle.case, id: '00000000-0000-4000-8000-000000000102', channel: 'amazon_de' as const, feedbackText: '不同的反馈', status: 'closed' as const, createdAt: '2026-10-30T23:00:00Z' }];
 
 describe('case management data and exports', () => {
+  it('keeps compact case references distinguishable when UUID prefixes match', () => {
+    expect(caseReference('00000000-0000-4000-8000-000000000101')).toBe('CASE-000101');
+    expect(caseReference('00000000-0000-4000-8000-000000000102')).not.toBe(caseReference('00000000-0000-4000-8000-000000000101'));
+    expect(caseReference('RL-2407')).toBe('RL-2407');
+  });
   it('combines query, channel and status without changing source records', () => {
     expect(filterCases(rows, { query: '不同', channel: 'amazon_de', status: 'closed' }).map((r) => r.id)).toEqual([rows[1].id]);
     expect(filterCases(rows, { query: '不同', status: 'open' })).toEqual([]);

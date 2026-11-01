@@ -150,7 +150,7 @@ try {
   await browser.click('.workspace-access-required a[href="/login"]');
   await signIn();
   await clientLink('.side-nav a[data-nav=shield]', '/dashboard?view=fix');
-  await expectText('document.body.innerText', 'No saved cases yet');
+  await browser.waitFor("document.body.innerText.includes('No saved cases yet') || document.body.innerText.includes('暂无已保存案例')");
   assert.equal(await browser.evaluate("document.querySelector('.empty-state a').getAttribute('href')"), '/feedback');
   pass('No saved cases offers case creation instead of a silent Overview redirect');
   listMode = 'success';
