@@ -22,6 +22,6 @@ export function caseHref(id: string | null, destination: CaseDestination) {
 }
 
 export function navigationCaseId(pathname: string, selectedId: string | null) {
-  const routeId = pathname.match(/^\/cases\/([^/]+)(?:\/fix)?\/?$/)?.[1];
-  return validCaseId(routeId) ?? validCaseId(selectedId);
+  const routeId = pathname.match(/^\/cases\/([^/]+)(?:\/(?:fix|detail))?\/?$/)?.[1];
+  return routeId ? validCaseId(routeId) : validCaseId(selectedId);
 }

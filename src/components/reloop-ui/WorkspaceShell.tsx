@@ -31,25 +31,42 @@ const labels = {
 export function WorkspaceShell({ children, title, searchQuery = '', selectionTarget }: { children: ReactNode; title: string; searchQuery?: string; selectionTarget?: CaseDestination }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { accessToken, clearAccessToken, locale, toggleLocale } = useWorkspace();
+  const { accessToken, clearAccessToken, locale, toggleLocale, compact } = useWorkspace();
   const selectedCaseId = useSelectedCase();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const quickRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasMobileOpen = useRef(false);
   const text = labels[locale];
   const routeCaseId = pathname.match(/^\/cases\/([^/]+)/)?.[1];
   const caseId = navigationCaseId(pathname, selectedCaseId);
   const isFix = pathname.endsWith('/fix');
+  const isDetail = pathname.endsWith('/detail');
   const isDashboard = pathname === '/dashboard';
   const nav = [
     { href: '/dashboard', label: text.overview, icon: 'grid', active: pathname === '/dashboard' && !selectionTarget },
     { href: '/feedback', label: text.feedback, icon: 'inbox', active: pathname === '/feedback' },
-    { href: caseHref(caseId, 'investigation'), label: text.investigation, icon: 'search', active: selectionTarget === 'investigation' || Boolean(routeCaseId && !isFix) },
+    { href: '/cases', label: locale === 'zh-CN' ? '案例管理' : 'Case management', icon: 'file', active: pathname === '/cases' || Boolean(routeCaseId && isDetail) },
+    { href: caseHref(caseId, 'investigation'), label: text.investigation, icon: 'search', active: selectionTarget === 'investigation' || Boolean(routeCaseId && !isFix && !isDetail) },
     { href: caseHref(caseId, 'fix'), label: text.fix, icon: 'shield', active: selectionTarget === 'fix' || Boolean(routeCaseId && isFix) },
+    { href: caseId ? `/rules?caseId=${caseId}` : '/rules', label: locale === 'zh-CN' ? '规则与来源' : 'Rules & sources', icon: 'globe', active: pathname === '/rules' },
   ];
+
+  useEffect(() => {
+    function closeOutside(event: PointerEvent) {
+      if (!(event.target instanceof Node)) return;
+      if (!toolsRef.current?.contains(event.target)) { setProfileOpen(false); setNotificationsOpen(false); }
+      if (!quickRef.current?.contains(event.target)) setQuickOpen(false);
+    }
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, []);
 
   useEffect(() => {
     if (mobileOpen) {
@@ -105,7 +122,7 @@ export function WorkspaceShell({ children, title, searchQuery = '', selectionTar
   }
 
   return (
-    <div className={`reloop-ui ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className={`reloop-ui ${collapsed ? 'sidebar-collapsed' : ''} ${compact ? 'compact-display' : ''}`}>
       <div className="app-shell">
         <a className="workspace-skip" href="#workspace-main" inert={mobileOpen}>{text.skip}</a>
         {mobileOpen && <button className="sidebar-backdrop" type="button" aria-label={text.closeNavigation} onClick={() => setMobileOpen(false)} />}
@@ -121,12 +138,13 @@ export function WorkspaceShell({ children, title, searchQuery = '', selectionTar
           <div className="sidebar-label">{text.menu}</div>
           <nav className="side-nav" aria-label={text.menu}>
             {nav.map((item) => (
-              <Link key={`${item.label}-${item.href}`} href={item.href} onClick={() => setMobileOpen(false)} className={`side-link ${item.active ? 'active' : ''}`} aria-current={item.active ? 'page' : undefined} title={collapsed ? item.label : undefined}>
+              <Link key={`${item.label}-${item.href}`} data-nav={item.icon} href={item.href} onClick={() => setMobileOpen(false)} className={`side-link ${item.active ? 'active' : ''}`} aria-current={item.active ? 'page' : undefined} title={collapsed ? item.label : undefined}>
                 <span className="nav-icon"><Icon name={item.icon} size={17}/></span><span className="side-text">{item.label}</span>
               </Link>
             ))}
           </nav>
           <div className="sidebar-mobile-actions">
+            <Link className="sidebar-action" href="/settings" onClick={() => setMobileOpen(false)}>{locale === 'zh-CN' ? '设置' : 'Settings'}</Link>
             <button className="sidebar-action" type="button" onClick={toggleLocale} aria-label={text.language}>{locale === 'en-US' ? '中文' : 'English'}</button>
             <button className="sidebar-action" type="button" onClick={signOut}>{text.signOut}</button>
           </div>
@@ -135,20 +153,21 @@ export function WorkspaceShell({ children, title, searchQuery = '', selectionTar
         <main className="main-area" inert={mobileOpen}>
           <header className="topbar">
             <div className="navbar-left">
-              <button className="icon-btn desktop-toggle" aria-label="Collapse navigation" aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}><Icon name="menu" size={17}/></button>
+              <button className="icon-btn desktop-toggle" aria-label={locale === 'zh-CN' ? '折叠导航' : 'Collapse navigation'} aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}><Icon name="menu" size={17}/></button>
               <button ref={menuButtonRef} className="icon-btn mobile-menu" aria-label={text.menu} aria-expanded={mobileOpen} aria-haspopup="dialog" onClick={() => setMobileOpen((value) => !value)}><Icon name="menu" size={19}/></button>
               <Brand compact className="mobile-brand"/>
-              <div className="quick-wrap">
-                <button className="quick-create" aria-expanded={quickOpen} onClick={() => setQuickOpen((value) => !value)}><Icon name="plus" size={14}/>{text.quickCreate}</button>
-                {quickOpen && <div className="quick-menu" role="menu"><Link role="menuitem" href="/feedback" onClick={() => setQuickOpen(false)}>{text.newCase}</Link>{caseId && <Link role="menuitem" href={isFix ? `/cases/${caseId}` : `/cases/${caseId}/fix`} onClick={() => setQuickOpen(false)}>{isFix ? text.openInvestigation : text.openWorkspace}</Link>}</div>}
+              <div className="quick-wrap" ref={quickRef} onKeyDown={(event) => { if (event.key === 'Escape') { setQuickOpen(false); quickRef.current?.querySelector('button')?.focus(); } }}>
+                <button className="quick-create" aria-expanded={quickOpen} aria-controls="quick-create-links" onClick={() => setQuickOpen((value) => !value)}><Icon name="plus" size={14}/>{text.quickCreate}</button>
+                {quickOpen && <div className="quick-menu" id="quick-create-links"><Link href="/feedback" onClick={() => setQuickOpen(false)}>{text.newCase}</Link>{caseId && <Link href={isFix ? `/cases/${caseId}` : `/cases/${caseId}/fix`} onClick={() => setQuickOpen(false)}>{isFix ? text.openInvestigation : text.openWorkspace}</Link>}<Link href="/cases" onClick={() => setQuickOpen(false)}>{locale === 'zh-CN' ? '浏览全部案例' : 'Browse all cases'}</Link></div>}
               </div>
             </div>
             <form key={isDashboard ? searchQuery : 'no-query'} className={`navbar-search ${isDashboard ? 'dashboard-search' : ''}`} role="search" onSubmit={(event) => { event.preventDefault(); router.push(`/dashboard?q=${encodeURIComponent(new FormData(event.currentTarget).get('q')?.toString() ?? '')}${selectionTarget ? `&view=${selectionTarget}` : ''}`); }}>
               <input name="q" autoComplete="off" defaultValue={isDashboard ? searchQuery : ''} placeholder={`${text.search}…`} aria-label={text.search}/><button className="icon-btn" aria-label={text.search} type="submit"><Icon name="search" size={16}/></button>
             </form>
-            <div className="topbar-tools">
+            <div className="topbar-tools" ref={toolsRef}>
               <button className="language" type="button" onClick={toggleLocale} aria-label={text.language}>{locale === 'en-US' ? '中文' : 'EN'}</button>
-              <button className="workspace-sign-out" type="button" onClick={signOut}>{text.signOut}</button>
+              <details className="workspace-popover" open={notificationsOpen} onToggle={(event) => setNotificationsOpen(event.currentTarget.open)} onKeyDown={(event) => { if (event.key === 'Escape') { setNotificationsOpen(false); event.currentTarget.querySelector('summary')?.focus(); } }}><summary className="icon-btn" aria-label={locale === 'zh-CN' ? '通知' : 'Notifications'}><Icon name="bell" size={18}/></summary><div className="workspace-popover-panel" role="status"><strong>{locale === 'zh-CN' ? '通知暂不可用' : 'Notifications unavailable'}</strong><p>{locale === 'zh-CN' ? '当前工作区未提供通知记录。' : 'Notification records are not available for this workspace.'}</p></div></details>
+              <details className="workspace-popover profile-control" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)} onKeyDown={(event) => { if (event.key === 'Escape') { setProfileOpen(false); event.currentTarget.querySelector('summary')?.focus(); } }}><summary>{locale === 'zh-CN' ? '工作区' : 'Workspace'} <span aria-hidden="true">⌄</span></summary><div className="workspace-popover-panel"><strong>{text.workspace}</strong><small>{text.access}</small><Link href="/settings" onClick={() => setProfileOpen(false)}>{locale === 'zh-CN' ? '设置' : 'Settings'}</Link><button className="workspace-sign-out" type="button" onClick={signOut}>{text.signOut}</button></div></details>
             </div>
           </header>
           <div className="workspace-context"><span>{title}</span><span className="demo-indicator"><i/>{text.access}</span></div>
