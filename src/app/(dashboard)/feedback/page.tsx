@@ -8,6 +8,7 @@ import { PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShe
 import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
 import { rememberCase } from '@/components/reloop-ui/useSelectedCase';
 import { VoiceInput } from '@/components/reloop-ui/VoiceInput';
+import { InboxContext } from '@/components/reloop-ui/InboxContext';
 import { ApiRequestError, analyzeCase, createCase } from '@/lib/frontend/api-client';
 import { requestMessage } from '@/lib/frontend/request-message';
 import { caseFieldIsInvalid, updateInvalidFields, type CaseInput, type CaseInputField } from '@/lib/frontend/case-validation';
@@ -136,7 +137,7 @@ export default function FeedbackPage() {
       <div className="page feedback-page">
         <PageHeading title={text.title} description={text.description} actions={<button className="btn btn-soft btn-sm" type="button" disabled={saving} onClick={loadExample}><Icon name="file" size={14}/>{text.useExample}</button>}/>
         <p className="api-notice synthetic-only" role="note">{text.synthetic}</p>
-        <form className="card card-pad feedback-form" noValidate onSubmit={submit}>
+        <div className="inbox-layout"><form className="card card-pad feedback-form" noValidate onSubmit={submit}>
           <fieldset className="feedback-section feedback-product" disabled={saving}>
             <legend>{text.product}</legend>
             <div className="feedback-context-grid">
@@ -163,7 +164,7 @@ export default function FeedbackPage() {
             {saved && <div className="api-notice saved-submission" role="status"><strong>{text.saved}</strong><p>{text.savedSku}: <span translate="no">{saved.input.sku}</span></p>{analysisUnavailable && <p>{text.unavailable}</p>}<p>{canRetrySavedCase ? text.retained : text.changed}</p><Link href={`/cases/${saved.id}`} className="card-link case-back-link">{text.openCase}<Icon name="arrow" size={13}/></Link></div>}
             <div className="feedback-submit-row"><p className="feedback-helper">{text.actionHint}</p><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? (canRetrySavedCase ? text.retrying : text.saving) : canRetrySavedCase ? text.retry : text.submit}<Icon name="arrow" size={14}/></button></div>
           </div>
-        </form>
+        </form><InboxContext hasSku={!!sku.trim()} hasFeedback={!!customerFeedback.trim()} hasInstruction={!!merchantInstruction.trim()}/></div>
       </div>
     </WorkspaceShell>
   );
