@@ -9,6 +9,8 @@ import { platformDefinitions } from '@/lib/config/platforms';
 import { findingCategorySchema, type ArtifactContent } from '@/lib/contracts';
 import type { z } from 'zod';
 import { Icon } from '@/components/reloop-ui/icons';
+import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
+import { SavedCaseIdentity } from '@/components/reloop-ui/SavedCaseIdentity';
 
 function fieldText(value: unknown) {
   if (typeof value === 'string') return value;
@@ -58,11 +60,11 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
     <WorkspaceShell title={text.title}>
       <div className="page">
         {loading && <div className="card card-pad api-state" role="status">{text.loading}</div>}
-        {!loading && error && <div className="card card-pad api-error" role="alert"><p>{error}</p><button className="btn btn-soft btn-sm" type="button" onClick={retry}>{text.retry}</button></div>}
-        {!loading && !error && !bundle && <div className="card card-pad api-error" role="alert">{text.missing}</div>}
+        {!loading && (error || !bundle) && <CaseLoadProblem message={error ?? text.missing} locale={locale} destination="investigation" retry={retry}/>}
         {!loading && !error && bundle && <>
           <PageHeading eyebrow={`${text.data} · ${bundle.case.id.slice(0, 8).toUpperCase()}`} title={text.title} description={`${bundle.product.name} · ${bundle.case.sku} · ${casePlatformLabel(bundle.case.channel)}`} actions={<Link href={`/cases/${bundle.case.id}/fix`} className="btn btn-primary btn-sm">{text.next}<Icon name="arrow" size={14}/></Link>}/>
           {bundle.case.synthetic && <span className="badge badge-neutral">{text.synthetic}</span>}
+          <SavedCaseIdentity caseRecord={bundle.case} product={bundle.product} locale={locale}/>
           {summaryVersion && <section className="card card-pad investigation-summary"><div className="card-title-row"><span className="card-title">{locale === 'zh-CN' ? '已保存的商家摘要' : 'Saved investigation summary'}</span><span className="badge badge-neutral">v{summaryVersion.version}</span></div><p>{artifactSummary(summaryVersion.content)}</p></section>}
           <div className="dashboard-grid investigation-grid">
             <div className="investigation-column">

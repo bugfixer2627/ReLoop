@@ -11,6 +11,7 @@ import { platformDefinitions } from '@/lib/config/platforms';
 import type { Platform } from '@/lib/contracts';
 import { platformSchema } from '@/lib/contracts';
 import { Icon } from '@/components/reloop-ui/icons';
+import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
 
 export default function FixApproveClient({ caseId }: { caseId: string }) {
   const { bundle, loading, error, retry } = useCaseBundle(caseId);
@@ -84,29 +85,28 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
     <WorkspaceShell title={text.title}>
       <div className="page">
         {loading && <div className="card card-pad api-state" role="status">{text.loading}</div>}
-        {!loading && error && <div className="card card-pad api-error" role="alert"><p>{error}</p><button className="btn btn-soft btn-sm" type="button" onClick={retry}>{text.retry}</button></div>}
-        {!loading && !error && !bundle && <div className="card card-pad api-error" role="alert">{text.missing}</div>}
+        {!loading && (error || !bundle) && <CaseLoadProblem message={error ?? text.missing} locale={locale} destination="fix" retry={retry}/>}
         {!loading && !error && bundle && <>
           <PageHeading eyebrow={`${bundle.case.id.slice(0, 8).toUpperCase()} · ${bundle.case.sku}`} title={text.title} description={`${text.channel}: ${casePlatformLabel(bundle.case.channel)} · ${bundle.product.name}`} actions={<CaseStatusBadge status={bundle.case.status} locale={locale}/>}/>
           <p className="muted fix-intro">{text.prompt} {text.notPublished}</p>
           {actionError && <div className="api-error" role="alert">{actionError}</div>}
           <section className="card card-pad artifact-section">
             <div className="card-title-row"><span className="card-title">{text.support}</span><span className="badge badge-neutral">Shopify US · English</span></div>
-            {supportArtifact ? <ArtifactWorkspace artifact={supportArtifact} versions={versions.filter((version) => version.artifactId === supportArtifact.id)} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/> : <div className="empty-state"><strong>{text.noSupport}</strong><button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('support')}>{busy === 'support' ? '…' : text.generateSupport}<Icon name="sparkle" size={13}/></button></div>}
+            {supportArtifact ? <ArtifactWorkspace key={supportArtifact.id} artifact={supportArtifact} versions={versions.filter((version) => version.artifactId === supportArtifact.id)} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/> : <div className="empty-state"><strong>{text.noSupport}</strong><button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('support')}>{busy === 'support' ? '…' : text.generateSupport}<Icon name="sparkle" size={13}/></button></div>}
           </section>
           <section className="card card-pad artifact-section">
             <div className="card-title-row"><span className="card-title">{text.listings}</span><span className="badge badge-neutral">3 platform snapshots</span></div>
             <div className="toolbar platform-toolbar" role="tablist" aria-label={text.listings}>
               {Object.entries(platformDefinitions).map(([id, definition]) => <button key={id} className={`tab ${platform === id ? 'active' : ''}`} type="button" role="tab" aria-selected={platform === id} onClick={() => { setPlatform(platformSchema.parse(id)); setActionError(null); }}>{definition.label}</button>)}
             </div>
-            {listingArtifact && <ArtifactWorkspace artifact={listingArtifact} versions={versions.filter((version) => version.artifactId === listingArtifact.id)} listing={listing} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/>}
+            {listingArtifact && <ArtifactWorkspace key={listingArtifact.id} artifact={listingArtifact} versions={versions.filter((version) => version.artifactId === listingArtifact.id)} listing={listing} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/>}
             {!listingArtifact && <div className="empty-state"><strong>{text.noListing}</strong><button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('repair')}>{busy === 'repair' ? '…' : text.generateListings}<Icon name="sparkle" size={13}/></button>{listing && <small>{listing.id} · {listing.snapshotVersion} · {platformDefinitions[platform].segment.toUpperCase()}</small>}</div>}
           </section>
           <div className="dashboard-grid fix-history-grid">
             <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.tasks}</span><span className="case-count">{bundle.tasks.length}</span></div><div className="task-actions"><button className="btn btn-soft btn-sm" type="button" disabled={taskBusy !== null} onClick={() => createFollowUp('qa')}>{taskBusy === 'qa' ? '…' : text.qaTask}</button><button className="btn btn-soft btn-sm" type="button" disabled={taskBusy !== null} onClick={() => createFollowUp('compliance')}>{taskBusy === 'compliance' ? '…' : text.complianceTask}</button></div>{bundle.tasks.length === 0 ? <p className="muted">{text.noTasks}</p> : <div className="timeline">{bundle.tasks.map((task) => <article className="timeline-item" key={task.id}><span className={`timeline-dot ${task.state === 'done' ? 'done' : ''}`}/><div><h4>{task.title}</h4><p>{task.assignedRole} · {task.state}</p><small>{task.description}</small></div></article>)}</div>}</section>
             <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.audit}</span><span className="case-count">{bundle.audit.length}</span></div>{bundle.audit.length === 0 ? <p className="muted">{text.noAudit}</p> : <div className="timeline">{bundle.audit.map((event) => <article className="timeline-item" key={event.id}><span className="timeline-dot done"/><div><h4>{event.action}</h4><p>{event.actorRole} · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.createdAt))}</p></div></article>)}</div>}</section>
           </div>
-          <Link className="card-link" href={`/cases/${caseId}`}>← {locale === 'zh-CN' ? '返回案例核验' : 'Back to claim investigation'} <Icon name="arrow" size={13}/></Link>
+          <Link className="card-link case-back-link" href={`/cases/${caseId}`}><span aria-hidden="true">←</span>{locale === 'zh-CN' ? '返回案例核验' : 'Back to claim investigation'}</Link>
         </>}
       </div>
     </WorkspaceShell>

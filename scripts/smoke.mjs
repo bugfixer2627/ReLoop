@@ -20,7 +20,7 @@ try {
     const response = await request(path);
     const html = await response.text();
     assert.equal(response.status, 200, path);
-    assert.ok(html.includes(phrase), `Missing Chinese text on ${path}`);
+    assert.ok(html.includes(phrase), `Missing expected page content on ${path}`);
     assert.ok(!html.includes("Jasmine Li"), `Prototype identity leaked into ${path}`);
     assert.ok(!html.includes("\uFFFD"), `Broken encoding on ${path}`);
     console.log(`PASS page ${path}`);
@@ -34,11 +34,11 @@ try {
   assert.equal(health.data.transcription, "not_implemented");
   console.log(`PASS health: DB ${health.data.database}; generation/transcription not implemented`);
   const endpoints = [
-    ...["analyze", "support", "repair", "tasks"].map((name) => ["POST", `/api/cases/${caseId}/${name}`]),
-    ...["revise", "review"].map((name) => ["POST", `/api/artifacts/${caseId}/${name}`]),
+    ...["support", "repair"].map((name) => ["POST", `/api/cases/${caseId}/${name}`]),
+    ["POST", `/api/artifacts/${caseId}/revise`],
     ["POST", "/api/transcribe"],
   ];
-  for (const [method, path] of [["GET", "/api/cases"], ["POST", "/api/cases"], ["GET", `/api/cases/${caseId}`]]) {
+  for (const [method, path] of [["GET", "/api/cases"], ["POST", "/api/cases"], ["GET", `/api/cases/${caseId}`], ["POST", `/api/cases/${caseId}/analyze`], ["POST", `/api/cases/${caseId}/tasks`], ["POST", `/api/artifacts/${caseId}/review`]]) {
     const response = await request(path, { method });
     assert.ok([401, 503].includes(response.status), `${path} must require demo access`);
   }
@@ -50,7 +50,7 @@ try {
     assert.equal(body.data, null);
     assert.equal(body.error.code, "NOT_IMPLEMENTED");
   }
-  console.log(`PASS all ${endpoints.length} incomplete AI/STT/review routes explicitly return 501`);
+  console.log(`PASS all ${endpoints.length} incomplete generation/revision/STT routes explicitly return 501`);
 } catch (error) {
   console.error(`Integration smoke check failed: ${error.message}`);
   process.exitCode = 1;

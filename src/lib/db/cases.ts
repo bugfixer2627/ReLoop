@@ -7,7 +7,7 @@ type Row = Record<string, unknown>;
 type CreateCase = z.infer<typeof createCaseRequestSchema>;
 
 // Convert column names only: keys inside JSON content are already API-shaped.
-function mapRow(row: Row, aliases: Record<string, string> = {}): Row {
+export function mapRow(row: Row, aliases: Record<string, string> = {}): Row {
   return Object.fromEntries(Object.entries(row).map(([key, value]) => [
     aliases[key] ?? key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()), value,
   ]));

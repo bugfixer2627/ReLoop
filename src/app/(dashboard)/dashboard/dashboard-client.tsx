@@ -7,18 +7,19 @@ import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
 import { ApiRequestError, casePlatformLabel, listCases } from '@/lib/frontend/api-client';
 import type { Case } from '@/lib/contracts';
 import { Icon } from '@/components/reloop-ui/icons';
+import { caseHref, type CaseDestination } from '@/lib/frontend/case-navigation';
 
 function dateLabel(value: string, locale: string) {
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-export default function DashboardClient({ initialQuery }: { initialQuery: string }) {
+export default function DashboardClient({ initialQuery, selectionTarget }: { initialQuery: string; selectionTarget?: CaseDestination }) {
   const { accessToken, locale } = useWorkspace();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query] = useState(initialQuery.trim());
+  const query = initialQuery.trim();
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -41,21 +42,26 @@ export default function DashboardClient({ initialQuery }: { initialQuery: string
   const closedCount = cases.filter((item) => item.status === 'closed').length;
   const text = locale === 'zh-CN' ? {
     eyebrow: '真实案例 · SAVED CASES', title: '案例工作台', description: '从已保存的客户反馈继续处理。', total: '全部案例', open: '处理中', review: '等待审核', closed: '已关闭',
-    list: '最近案例', empty: '暂无已保存案例。', emptySearch: '没有符合搜索条件的案例。', retry: '重试', newCase: '新建案例', caseSku: '案例 / SKU', channel: '平台', status: '状态', created: '创建时间',
+    list: '最近案例', empty: '暂无已保存案例。', emptySearch: '没有符合搜索条件的案例。', retry: '重试', unavailable: '未知', newCase: '新建案例', caseSku: '案例 / SKU', channel: '平台', status: '状态', created: '创建时间',
   } : {
     eyebrow: 'SAVED CASES', title: 'Case overview', description: 'Continue from saved customer feedback.', total: 'All cases', open: 'In progress', review: 'Pending review', closed: 'Closed',
-    list: 'Recent cases', empty: 'No saved cases yet.', emptySearch: 'No cases match this search.', retry: 'Retry', newCase: 'New case', caseSku: 'Case / SKU', channel: 'Channel', status: 'Status', created: 'Created',
+    list: 'Recent cases', empty: 'No saved cases yet.', emptySearch: 'No cases match this search.', retry: 'Retry', unavailable: 'Unknown', newCase: 'New case', caseSku: 'Case / SKU', channel: 'Channel', status: 'Status', created: 'Created',
   };
+  const metricValue = (value: number) => loading ? '—' : error ? text.unavailable : value;
+  const pickerTitle = locale === 'zh-CN'
+    ? (selectionTarget === 'fix' ? '选择案例以修订与审核' : '选择案例以核验')
+    : (selectionTarget === 'fix' ? 'Choose a case to fix & approve' : 'Choose a case to investigate');
+  const title = selectionTarget ? pickerTitle : text.title;
 
   return (
-    <WorkspaceShell title={text.title}>
+    <WorkspaceShell title={title} searchQuery={initialQuery} selectionTarget={selectionTarget}>
       <div className="page">
-        <PageHeading eyebrow={text.eyebrow} title={text.title} description={text.description} actions={<Link href="/feedback" className="btn btn-primary btn-sm"><Icon name="plus" size={14}/>{text.newCase}</Link>}/>
+        <PageHeading eyebrow={selectionTarget ? undefined : text.eyebrow} title={title} description={selectionTarget ? (locale === 'zh-CN' ? '打开下方已保存案例，或新建案例。' : 'Open a saved case below, or create a new case.') : text.description} actions={<Link href="/feedback" className="btn btn-primary btn-sm"><Icon name="plus" size={14}/>{text.newCase}</Link>}/>
         <div className="metrics-grid">
-          <div className="card metric-card"><div className="metric-label">{text.total}</div><div className="metric-value">{loading ? '—' : cases.length}</div></div>
-          <div className="card metric-card"><div className="metric-label">{text.open}</div><div className="metric-value">{loading ? '—' : openCount}</div></div>
-          <div className="card metric-card metric-accent"><div className="metric-label">{text.review}</div><div className="metric-value">{loading ? '—' : reviewCount}</div></div>
-          <div className="card metric-card"><div className="metric-label">{text.closed}</div><div className="metric-value">{loading ? '—' : closedCount}</div></div>
+          <div className="card metric-card"><div className="metric-label">{text.total}</div><div className="metric-value">{metricValue(cases.length)}</div></div>
+          <div className="card metric-card"><div className="metric-label">{text.open}</div><div className="metric-value">{metricValue(openCount)}</div></div>
+          <div className="card metric-card metric-accent"><div className="metric-label">{text.review}</div><div className="metric-value">{metricValue(reviewCount)}</div></div>
+          <div className="card metric-card"><div className="metric-label">{text.closed}</div><div className="metric-value">{metricValue(closedCount)}</div></div>
         </div>
         <section className="card card-pad case-list-panel">
           <div className="card-title-row"><span className="card-title">{text.list}</span><span className="case-count">{loading ? '…' : filtered.length}</span></div>
@@ -66,7 +72,7 @@ export default function DashboardClient({ initialQuery }: { initialQuery: string
             {filtered.map((item) => <tr key={item.id}>
               <td><div className="case-id">{item.id.slice(0, 8).toUpperCase()}</div><div className="case-title">{item.feedbackText.slice(0, 84)}{item.feedbackText.length > 84 ? '…' : ''}</div><div className="case-sub">SKU {item.sku} {item.synthetic && <span className="badge badge-neutral">{locale === 'zh-CN' ? '合成' : 'Synthetic'}</span>}</div></td>
               <td>{casePlatformLabel(item.channel)}</td><td><CaseStatusBadge status={item.status} locale={locale}/></td><td>{dateLabel(item.createdAt, locale)}</td>
-              <td><Link className="icon-btn case-open" href={`/cases/${item.id}`} aria-label={`Open case ${item.id}`}><Icon name="arrow" size={15}/></Link></td>
+              <td><Link className="icon-btn case-open" href={caseHref(item.id, selectionTarget ?? 'investigation')} aria-label={`${locale === 'zh-CN' ? '打开案例' : 'Open case'} ${item.id}`}><Icon name="arrow" size={15}/></Link></td>
             </tr>)}
           </tbody></table></div>}
         </section>

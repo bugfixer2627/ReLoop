@@ -13,8 +13,15 @@ export function checkAccess(request: Request) {
     return apiFailure("UNAUTHORIZED", "Demo access is required.", 401);
   }
   const origin = request.headers.get("origin");
-  if (request.method !== "GET" && origin && origin !== new URL(request.url).origin) {
-    return apiFailure("UNAUTHORIZED", "Request origin is not allowed.", 403);
+  if (request.method !== "GET" && origin) {
+    try {
+      const requestUrl = new URL(request.url);
+      const host = request.headers.get("host") ?? requestUrl.host;
+      const expectedOrigin = new URL(requestUrl.protocol + "//" + host).origin;
+      if (origin !== expectedOrigin) return apiFailure("UNAUTHORIZED", "Request origin is not allowed.", 403);
+    } catch {
+      return apiFailure("UNAUTHORIZED", "Request origin is not allowed.", 403);
+    }
   }
   return null;
 }
