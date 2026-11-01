@@ -13,10 +13,7 @@ async function request(path, options) {
 try {
   const pages = [
     ["/", "Clearer Product Claims"], ["/login", "Email address"],
-    ["/dashboard", "Checking workspace session"], ["/feedback", "Checking workspace session"],
-    ["/cases", "Checking workspace session"], ["/settings", "Checking workspace session"], ["/rules", "Checking workspace session"],
-    [`/cases/${caseId}/detail`, "Checking workspace session"],
-    [`/cases/${caseId}`, "Checking workspace session"], [`/cases/${caseId}/fix`, "Checking workspace session"],
+    ...["/dashboard", "/feedback", "/cases", "/settings", "/rules", `/cases/${caseId}/detail`, `/cases/${caseId}`, `/cases/${caseId}/fix`].map((path) => [path, "Checking workspace session"]),
   ];
   for (const [path, phrase] of pages) {
     const response = await request(path);
@@ -50,7 +47,7 @@ try {
   }
   const speech = await request("/api/transcribe", { method: "POST" });
   const speechBody = await speech.json();
-  assert.ok([400, 403, 503].includes(speech.status));
+  assert.ok([400, 401, 403, 503].includes(speech.status));
   assert.ok(["INVALID_REQUEST", "UNAUTHORIZED", "NOT_CONFIGURED"].includes(speechBody.error.code));
   console.log(`PASS protected case/workflow routes reject unavailable configuration; speech validates requests`);
 } catch (error) {

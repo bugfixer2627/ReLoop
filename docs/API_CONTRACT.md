@@ -1,6 +1,6 @@
-# Shared API contract v1 — foundation handoff
+# Shared API contract v1
 
-**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Case creation, AI investigation, support, listing correction, revision, review and task persistence are implemented and have passed real-provider/hosted-Supabase HTTP checks. Text translation is separate from speech transcription. Speech has an implemented route but requires a separately configured provider; it currently returns 503 NOT_CONFIGURED for valid audio. See `WORKFLOW_VERIFICATION_2026-11-01.md` for test boundaries.
+**Canonical shapes:** `src/lib/contracts/domain.ts` and `api.ts`. Case creation, AI investigation, support, listing correction, revision, review and task persistence are implemented and have passed real-provider/hosted-Supabase HTTP checks. Text translation is separate from speech transcription. The incoming speech implementation supports a separately launched local CPU service or an external transcription provider, plus an independent browser-recognition mode. Ordinary startup without speech configuration returns 503 NOT_CONFIGURED for valid audio. See `WORKFLOW_VERIFICATION_2026-11-01.md`, `VOICE_SETUP.md`, and `H18_H24_DELIVERY.md` for their respective test boundaries.
 
 Browser sign-in uses `POST /api/auth/login` with `{email,password}`. Supabase Auth verifies the credentials; the server issues a signed HttpOnly, SameSite cookie with an eight-hour lifetime. `GET /api/auth/session` reports whether it is valid and `POST /api/auth/logout` clears it. Public registration is disabled; users are provisioned by a Supabase administrator. Browser mutations require a same-origin `Origin` header. A configured `DEMO_ACCESS_TOKEN` remains available only for trusted API clients during migration and is not shown in the login UI.
 
@@ -71,6 +71,8 @@ Analyze saves deterministic battery-runtime evidence findings, then extracts the
 Check expected head; generate/validate; lock and recheck; atomically save next version, new findings, revision and audit, then advance head. Stale edits return 409. Timeout/invalid output leaves old history intact. New versions start unapproved. Preserve old findings/reviews.
 
 The current HTTP revision route uses `reloop_create_revision` for atomic version, findings, revision and audit persistence. `reloop_save_revision` remains a legacy interface. Generated content is checked again; previous content is immutable and the new version starts unapproved.
+
+On PostgREST PGRST202 (missing signature) only, revision, review and task repositories may use the legacy case-operation RPCs. Semantic errors and ambiguous network failures never trigger fallback writes.
 
 ### Review exact version
 

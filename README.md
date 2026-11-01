@@ -4,7 +4,7 @@
 
 **Current milestone:** the AI branch is merged into main. The provided Supabase CA enables verified Postgres connections, and the missing workflow migrations are deployed. Real provider/hosted-Supabase HTTP checks pass case creation, AI summary, support and three listing drafts, support/listing v1→v2→v3, review decisions, task updates and reload. See [current verification and limitations](docs/WORKFLOW_VERIFICATION_2026-11-01.md).
 
-Chinese/English text translation is a separate authenticated endpoint and Inbox reference preview; both directions were tested with the real chat provider. Speech transcription still requires its own working endpoint/model/key. Outstanding rule checks prevent approval, and a complete browser rehearsal remains unverified.
+Chinese/English text translation is a separate authenticated endpoint and Inbox reference preview; both directions were tested with the real chat provider. The incoming speech work adds local CPU Whisper and browser recognition modes; see [speech setup and its verification boundaries](docs/VOICE_SETUP.md) and [the delivery report](docs/H18_H24_DELIVERY.md). The ordinary startup does not automatically enable the local speech service. Outstanding rule checks prevent approval, and the hosted browser rehearsal remains separate from API verification.
 
 ## Run locally
 
@@ -15,9 +15,11 @@ npm ci
 npm run dev
 ```
 
+For the local CPU transcription service on the prepared Windows demo machine, use `npm.cmd run dev:local-stt` instead of `npm run dev`. This starts both Next and Whisper without editing `.env.local`; see [the exact speech setup](docs/VOICE_SETUP.md). Production local preview: build once, then `npm.cmd run start:local-stt`.
+
 Open [http://localhost:3000](http://localhost:3000) for the public landing page. Workspace access uses Supabase Auth email/password credentials entered on `/login`; the server issues a signed HttpOnly cookie. Auth users are provisioned by an administrator; public registration is disabled. Health checks database availability; AI/speech configured states indicate configuration presence, not a successful provider request.
 
-For a synthetic demo account, run `npm run auth:create-demo-user`. It creates an email-confirmed Supabase Auth user with a random `@example.com` address and password and prints the credentials once. That address cannot receive verification or password-reset mail.
+Use the workspace account already provisioned by the database administrator. Account creation changes hosted Auth data and requires that project's approval; it is not part of the safe local startup sequence.
 
 If your network requires an HTTP proxy, set `HTTPS_PROXY`, `NODE_USE_ENV_PROXY=1`, and `NO_PROXY=localhost,127.0.0.1` in `.env.local`; the dev launcher passes these settings to Node. To access the dev server through a local network hostname or IP, add it to `NO_PROXY` and set `RELOOP_DEV_ORIGINS` to that hostname or IP (comma-separated for multiple hosts). Restart the dev server after changing proxy settings. Use `http://localhost:3000` when working on the same computer.
 
@@ -35,7 +37,7 @@ npm ci
 - The UI uses production Zod DTOs, shows empty/loading/error states, and never substitutes UI handoff fixtures for saved case results. The optional Inbox example is explicitly labeled synthetic and uses the production seed fixture.
 - Original evidence, platform snapshots, existing findings, artifacts, versions, tasks, and audit entries render from the stored case bundle. No generated finding is inferred in the browser.
 - Revisions and review controls call the implemented API routes and update after successful persistence. Unresolved evidence/rule checks block approval; request changes and reject remain available.
-- Voice UI uses microphone permission and `MediaRecorder`, supports stop/cancel, and sends bearer-authenticated audio to `/api/transcribe`. Editable transcripts require confirmation, and typing remains available on failure. Live speech remains unverified.
+- Voice UI offers a configured transcription backend or browser SpeechRecognition (`zh-CN`/`en-US`). Both initial instructions and revisions show editable text requiring confirmation. The browser vendor may process audio remotely; this is disclosed before capture. Typing, cancellation, permission/error handling and timeouts remain available. Actual recognition requires service availability and is not established by mocked tests.
 - The integration uses the provided Spark/Crypgo source, scoped design CSS, official local ReLoop assets, and local Inter. See [the integration plan](docs/UI_INTEGRATION_PLAN.md) and [asset attribution](docs/UI_ATTRIBUTION.md).
 
 ## Backend boundary
@@ -46,9 +48,9 @@ The tracked `.env.example` documents the configuration keys. Copy it only if `.e
 
 The production app's `npm run check` includes lint, type generation/TypeScript, tests, and production build. `npm run smoke` checks public/protected page responses, API authentication and health. The opt-in `tests/integration.live.test.ts` checks actual saved results. It requires `RELOOP_INTEGRATION_BASE_URL`, `RELOOP_INTEGRATION_TOKEN`, `RELOOP_INTEGRATION_WRITES=1`, and `RELOOP_INTEGRATION_AI=1` for real provider calls and synthetic writes. No reset or migration runs inside the test.
 
-## Remaining backend work
+## Current integration boundaries
 
-- Configure a verified transcription provider and test real Chinese/English recordings separately from text translation.
+- Start the independently configured local speech service with `npm run dev:local-stt`, or configure a supported external transcription service. Browser recognition remains a separate mode. The incoming delivery report records the teammate's audio tests and user-confirmed bilingual microphone check; this merge does not rerun physical microphone acceptance.
 - Resolve applicable rule evaluations before approving generated drafts; source metadata alone does not complete checks.
 - Run the full user-facing browser rehearsal, including translation previews and microphone permissions. API replays do not prove those interactions.
 - The browser uses a signed HttpOnly session issued after Supabase Auth email/password verification. Team/tenant provisioning and account management remain separate work.
@@ -90,13 +92,13 @@ npm test
 npm run build
 ```
 
-`npm run check` runs all four. CI repeats these on pushes and PRs. Actual model, speech, live Supabase and two complete MVP rehearsals require feature implementation and credentials; foundation tests do not establish those gates.
+`npm run check` runs all four. CI repeats these on pushes and PRs. Opt-in real AI/local SQL tests: `node scripts/test-live-ai.mjs`. After a production build, real-browser/local SQL/real AI tests: `node scripts/test-browser-workflows.mjs` (Edge by default, test port 3001). Both write only an isolated embedded database. These are not hosted Supabase or microphone rehearsals. See the final report for exact results and startup instructions.
 
 An independent prompt-routing CLI is available for local experiments; it does not enable product generation endpoints. See [Prompt Router](docs/PROMPT_ROUTER.md) for model selection, explicit eval criteria, bounded escalation, and offline tests.
 
 With the app running, `npm run smoke` checks the landing/login/workspace routes, access protection, health, and speech request handling. It defaults to port 3000; set `RELOOP_BASE_URL` to use another local address. It does not establish live AI, speech or database integration.
 
-## Team handoff
+## Project references
 
 - [Accepted decisions](docs/DECISIONS.md): user clarification, scope conflicts and version semantics.
 - [Shared API contract](docs/API_CONTRACT.md): endpoints, envelopes and speech limits. Zod in `src/lib/contracts` governs DTO shape.

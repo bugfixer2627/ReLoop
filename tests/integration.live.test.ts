@@ -291,6 +291,17 @@ live('opt-in real application HTTP integration', () => {
     });
   }, 600000);
 
+  it('rejects nonexistent generation targets before provider calls', async () => {
+    await verify('missing generation targets', async () => {
+      for (const path of [`/api/cases/${randomUUID()}/support`, `/api/cases/${randomUUID()}/repair`, `/api/artifacts/${randomUUID()}/revise`]) {
+        const result = await request(path, json(path.endsWith('/revise')
+          ? { promptText: 'Shorten the draft.', promptLocale: 'en-US', expectedVersion: 1 } : {}));
+        expect(result.response.status).toBe(404);
+        expect(!result.envelope.ok && result.envelope.error.code).toBe('NOT_FOUND');
+      }
+    });
+  }, 60000);
+
   it('rejects mislabeled audio without inventing a transcript', async () => {
     await verify('audio validation is independent of translation', async () => {
       const form = new FormData();

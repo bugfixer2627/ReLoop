@@ -1,6 +1,9 @@
 # Current verification — 1 November 2026
 
-Latest follow-up: [H14_H18_SERVICE_VERIFICATION.md](H14_H18_SERVICE_VERIFICATION.md).
+Hosted workflow and translation results: [WORKFLOW_VERIFICATION_2026-11-01.md](WORKFLOW_VERIFICATION_2026-11-01.md). Incoming speech and local-browser stabilization results: [H18_H24_DELIVERY.md](H18_H24_DELIVERY.md). These reports cover different environments and both are retained in the merge.
+The counts and service states below are preserved historical checkpoints.
+
+Previous follow-up: [H14_H18_SERVICE_VERIFICATION.md](H14_H18_SERVICE_VERIFICATION.md).
 147 offline tests pass and two separate real-AI/local-SQL tests pass. Real
 speech remains blocked; hosted writes were explicitly postponed. Older counts
 and service states in this file are historical checkpoints.

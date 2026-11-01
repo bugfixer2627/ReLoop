@@ -1,42 +1,40 @@
 import type { ArtifactContent, CaseBundle } from "@/lib/contracts";
 import type { WorkflowFinding } from "@/lib/db/workflows";
-
-function sameConditions(left: Record<string, string>, right: Record<string, string>) {
-  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort();
-  return keys.every((key) => left[key] === right[key]);
-}
+import { compareListingEvidence } from "./evidence";
 
 export function checkListingEvidence(bundle: CaseBundle, listingId?: string): WorkflowFinding[] {
   const specification = bundle.evidence.find((source) => source.kind === "specification" && source.numericClaim);
-  if (!specification?.numericClaim) return [];
   const listings = bundle.listings.filter((listing) => !listingId || listing.id === listingId);
   const findings: WorkflowFinding[] = [];
 
   for (const listing of listings) {
     const claim = listing.numericClaim;
-    if (!claim || claim.metric !== specification.numericClaim.metric || claim.unit !== specification.numericClaim.unit) continue;
-    const comparable = sameConditions(claim.conditions, specification.numericClaim.conditions);
-    if (comparable && claim.value !== specification.numericClaim.value) {
+    if (!claim) continue;
+    const candidates = bundle.evidence.filter((source) => source.kind === "specification" && source.numericClaim?.metric === claim.metric);
+    const compared = candidates.map((source) => ({ source, status: compareListingEvidence(listing, source) }));
+    const match = compared.find((entry) => entry.status === "documented_mismatch") ?? compared.find((entry) => entry.status === "supported");
+    const source = match?.source ?? specification;
+    if (match?.status === "documented_mismatch" && source?.numericClaim) {
       findings.push({
         listing_id: listing.id,
         category: "evidence",
         severity: "warning",
         code: "DOCUMENTED_RUNTIME_MISMATCH",
         evidence_status: "documented_mismatch",
-        source_ids: [specification.id, listing.id],
+        source_ids: [source.id, listing.id],
         original_span: JSON.stringify(claim),
-        proposed_span: JSON.stringify(specification.numericClaim),
-        explanation_zh: `在相同测试条件下，${listing.platform}快照记录${claim.value}${claim.unit}，规格记录${specification.numericClaim.value}${specification.numericClaim.unit}；需要人工确认。`,
-        explanation_en: `Under matching test conditions, the ${listing.platform} snapshot records ${claim.value} ${claim.unit} while the specification records ${specification.numericClaim.value} ${specification.numericClaim.unit}; confirm before publishing.`,
+        proposed_span: JSON.stringify(source.numericClaim),
+        explanation_zh: `在相同测试条件下，${listing.platform}快照记录${claim.value}${claim.unit}，规格记录${source.numericClaim.value}${source.numericClaim.unit}；需要人工确认。`,
+        explanation_en: `Under matching test conditions, the ${listing.platform} snapshot records ${claim.value} ${claim.unit} while the specification records ${source.numericClaim.value} ${source.numericClaim.unit}; confirm before publishing.`,
       });
-    } else if (!comparable) {
+    } else if (!match) {
       findings.push({
         listing_id: listing.id,
         category: "evidence",
         severity: "info",
         code: "RUNTIME_NEEDS_COMPARABLE_EVIDENCE",
         evidence_status: "needs_evidence",
-        source_ids: [specification.id, listing.id],
+        source_ids: [...(source ? [source.id] : []), listing.id],
         original_span: JSON.stringify(claim),
         proposed_span: null,
         explanation_zh: `${listing.platform}的运行时间条件与规格条件不完全一致，不能直接判定差异。`,
@@ -70,8 +68,14 @@ export function checkGeneratedContent(bundle: CaseBundle, content: ArtifactConte
   const policy = bundle.evidence.find((source) => source.kind === "support_policy");
   const text = JSON.stringify(content);
   const findings: WorkflowFinding[] = [];
-  const runtime = /\b(?:up\s*to|up-to|maximum|max)\s*(\d+(?:\.\d+)?)\s*(?:hours?|h)\b/i.exec(text);
-  if (specification?.numericClaim && runtime && Number(runtime[1]) > specification.numericClaim.value) {
+  // Inspect every candidate, including Chinese revision output. Checking only
+  // the first number lets a later unsupported promise escape revalidation.
+  const runtimes = [
+    ...text.matchAll(/\b(?:up\s*to|up-to|maximum|max|lasts?(?:\s+for)?)\s*(\d+(?:\.\d+)?)\s*(?:hours?|h)\b/gi),
+    ...text.matchAll(/(?:续航|运行时间|电池寿命|最长|长达|最多)\s*(?:可达|为|：|:)?\s*(\d+(?:\.\d+)?)\s*(?:个)?小时/g),
+  ];
+  for (const runtime of runtimes) {
+    if (!specification?.numericClaim || Number(runtime[1]) <= specification.numericClaim.value) continue;
     findings.push({
       listing_id: listingId ?? null,
       category: "evidence",

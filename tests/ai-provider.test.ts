@@ -53,8 +53,15 @@ describe("OpenAI-compatible provider adapter", () => {
   });
 
   it.each(['prefix <escape>{"issue":"test","customerClaim":null,"unknowns":[]}</escape>', '<escape>{"issue":42}</escape>', '<escape><escape>{"issue":"test"}</escape></escape>'])("does not salvage prose or invalid schemas from gateway output", async (content) => {
-    fetcher.mockResolvedValueOnce(response({ choices: [{ message: { content } }] }));
+    fetcher.mockImplementation(async () => response({ choices: [{ message: { content } }] }));
     await expect(adapter().ai.extract(demoBundle)).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it("regenerates once after invalid structured output and still validates the fresh response", async () => {
+    fetcher.mockResolvedValueOnce(response({ choices: [{ message: { content: '{"issue":42}' } }] }));
+    fetcher.mockResolvedValueOnce(response({ choices: [{ message: { content: '{"issue":"Runtime report","customerClaim":null,"unknowns":["conditions"]}' } }] }));
+    expect(await adapter().ai.extract(demoBundle)).toEqual({ issue: "Runtime report", customerClaim: null, unknowns: ["conditions"] });
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("maps provider throttling without exposing provider response text", async () => {
@@ -81,5 +88,13 @@ describe("OpenAI-compatible provider adapter", () => {
     });
     const result = await adapter().transcription.transcribe(new Uint8Array([1, 2, 3]), "audio/webm", "zh-CN");
     expect(result).toEqual({ text: "请核对测试条件。", locale: "zh-CN", durationSeconds: 8.25 });
+  });
+  it.each([[413, "AUDIO_TOO_LARGE"], [415, "UNSUPPORTED_AUDIO"]])("preserves real audio-service error %s", async (status, code) => {
+    fetcher.mockResolvedValueOnce(response({ error: { message: "private provider detail" } }, status as number));
+    await expect(adapter().transcription.transcribe(new Uint8Array([1]), "audio/wav", "en-US")).rejects.toMatchObject({ code, status, retryable: false });
+  });
+  it("rejects a successful speech response with no recognized words", async () => {
+    fetcher.mockResolvedValueOnce(response({ text: " ", duration: 3 }));
+    await expect(adapter().transcription.transcribe(new Uint8Array([1]), "audio/wav", "en-US")).rejects.toMatchObject({ code: "TRANSCRIPTION_FAILED" });
   });
 });

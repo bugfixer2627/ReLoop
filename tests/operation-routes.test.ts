@@ -21,7 +21,7 @@ function req(body: unknown, token = testToken) {
 }
 beforeEach(() => {
   vi.resetAllMocks(); process.env.DEMO_ACCESS_TOKEN = testToken;
-  mocks.client.mockReturnValue({ rpc: mocks.rpc });
+  mocks.client.mockReturnValue({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) });
   mocks.bundle.mockResolvedValue(demoBundle);
   mocks.rpc.mockResolvedValue({ error: null, data: null });
   mocks.analysis.mockResolvedValue(demoBundle);
@@ -45,8 +45,11 @@ describe("analysis, task, and review endpoints", () => {
     expect((await review(req({}, "incorrect"), context)).status).toBe(401);
     expect(mocks.client).not.toHaveBeenCalled();
   });
-  it("rejects invalid tasks and maps stale reviews to conflicts", async () => {
+  it("rejects invalid tasks and reports missing artifacts before review", async () => {
     expect((await tasks(req({}), context)).status).toBe(400);
+    expect((await review(req({ version: 1, decision: "approved", reviewerRole: "support", comment: "" }), context)).status).toBe(404);
+  });
+  it("maps a concurrent review change to a conflict", async () => {
     const artifact = { ...mockGeneratedBundle.artifacts.find((item) => item.kind === "support_reply")!, caseId: demoBundle.case.id, latestVersion: 1 };
     const version = { ...mockGeneratedBundle.versions.find((item) => item.artifactId === artifact.id)!, artifactId: artifact.id, version: 1, validationStatus: "checked" as const };
     mocks.bundle.mockResolvedValue({ ...demoBundle, artifacts: [artifact], versions: [version], findings: [] });

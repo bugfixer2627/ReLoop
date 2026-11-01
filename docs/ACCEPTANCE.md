@@ -2,7 +2,7 @@
 
 Sources: supplied Chinese brief, rubric transcription and original PNGs in `docs/source/`. The screenshots govern conflicting transcription wording. No group-score weighting was supplied.
 
-**Status:** foundation verification only. The table below is the completed MVP test plan; none of the end-to-end MVP gates are claimed complete yet. Contract tests and embedded SQL tests are not live model/voice/Supabase rehearsals.
+**Current evidence:** see [H18_H24_DELIVERY.md](H18_H24_DELIVERY.md) for per-feature results. Real AI and isolated SQL are tested separately from hosted writes and microphone recognition. The table below preserves the full acceptance criteria; passing a local subset does not imply every gate is complete.
 
 | Gate | Source | Runnable acceptance behavior | Owner |
 |---|---|---|---|

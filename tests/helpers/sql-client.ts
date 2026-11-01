@@ -3,8 +3,8 @@ import type { PGlite } from "@electric-sql/pglite";
 
 // TEST TRANSPORT ONLY: real Supabase SDK and repositories, real embedded SQL.
 // This narrow PostgREST transport substitute is not a hosted Supabase test.
-export function sqlClient(db: PGlite) {
-  const tables = new Set(["products", "cases", "evidence_sources", "platform_listings", "rules", "artifacts", "artifact_versions", "findings", "revision_events", "tasks", "audit_events"]);
+export function sqlFetch(db: PGlite): typeof fetch {
+  const tables = new Set(["products", "cases", "evidence_sources", "platform_listings", "rules", "artifacts", "artifact_versions", "findings", "revision_events", "artifact_reviews", "tasks", "audit_events"]);
   const identifier = (value: string) => {
     if (!/^[a-z_]+$/.test(value)) throw new Error("Invalid SQL test identifier");
     return `"${value}"`;
@@ -19,7 +19,7 @@ export function sqlClient(db: PGlite) {
       if (parts.includes("rpc")) {
         if (!name.startsWith("reloop_")) throw new Error("Unexpected SQL test RPC");
         const args = Object.entries(await request.json());
-        rows = (await db.query<Record<string, unknown>>(`select * from ${identifier(name)}(${args.map(([key], index) => `${identifier(key)} => $${index + 1}`).join(",")})`, args.map(([key, value]) => ["p_content", "p_findings"].includes(key) ? JSON.stringify(value) : value))).rows;
+        rows = (await db.query<Record<string, unknown>>(`select * from ${identifier(name)}(${args.map(([key], index) => `${identifier(key)} => $${index + 1}`).join(",")})`, args.map(([key, value]) => ["p_content", "p_findings", "p_task", "p_version", "p_revision", "p_review"].includes(key) ? JSON.stringify(value) : value))).rows;
       } else {
         if (!tables.has(name)) throw new Error("Unexpected SQL test table");
         if (request.method === "POST") {
@@ -35,11 +35,16 @@ export function sqlClient(db: PGlite) {
         }
       }
       const single = request.headers.get("accept")?.includes("vnd.pgrst.object");
+      if (parts.includes("rpc") && rows[0] && Object.keys(rows[0]).length === 1 && name in rows[0]) return Response.json(rows[0][name] ?? null);
       return Response.json(single ? rows[0] ?? null : rows, { status: request.method === "POST" && !parts.includes("rpc") ? 201 : 200 });
     } catch (error) {
       const detail = error as { message: string; code?: string };
       return Response.json({ message: detail.message, code: detail.code ?? "XX000", details: null, hint: null }, { status: 400 });
     }
   };
-  return createClient("https://sql-test.invalid", "local-test-only", { global: { fetch: fetcher }, auth: { persistSession: false } });
+  return fetcher;
+}
+
+export function sqlClient(db: PGlite) {
+  return createClient("https://sql-test.invalid", "local-test-only", { global: { fetch: sqlFetch(db) }, auth: { persistSession: false } });
 }
