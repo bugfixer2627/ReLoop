@@ -52,7 +52,7 @@ Browser diagnosis: installed Edge exposes the API in a secure localhost context,
 
 ## Windows 11 local startup
 
-1. Open `C:\Users\Vladimir\Desktop\reloop AI` in Codex. Use its PowerShell terminal in that folder.
+1. Open PowerShell in the repository root.
 2. Use Node >=22.19.0; the project pins Node 24.14.1 in `.node-version`. This stabilization environment ran Node 26.13.0. Use npm, with the committed `package-lock.json` for reproducible installation.
 3. If dependencies are missing, run `npm.cmd ci`. If the Windows certificate store is needed, set `$env:NODE_USE_SYSTEM_CA = '1'` for this terminal, keeping TLS verification enabled.
 4. Keep the existing `.env.local`. For a new checkout only: `if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }`. Edit locally; do not paste credentials in chat. `.env.local` is Git-ignored and untracked.
@@ -77,7 +77,6 @@ Browser speech mode needs a supported browser, permitted microphone access, loca
 ## Practical checks
 
 ```powershell
-Set-Location 'C:\Users\Vladimir\Desktop\reloop AI'
 Invoke-RestMethod http://localhost:3000/api/health
 npm.cmd run check
 node scripts/smoke.mjs

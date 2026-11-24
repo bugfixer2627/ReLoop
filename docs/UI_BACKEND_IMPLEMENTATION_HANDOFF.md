@@ -1,6 +1,6 @@
 # Prototype implementation: backend handoff
 
-Audit date: 1 November 2026. Production baseline: main `1b7667c`. Current remote backend `cde5306` and AI `ea36c13` are separate workstreams, not merged implementations. This handoff records production code support, not successful live provider/database execution. Historical verification remains in `UI_BACKEND_HANDOFF.md`; no new runtime backend or schema changes are included in this frontend integration.
+This audit captures the prototype at commit `1b7667c` on 1 November 2026, before the backend and AI integrations. See [verification](VERIFICATION.md) for the recorded behavior of the integrated workflows.
 
 ## Summary
 

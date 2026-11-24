@@ -8,7 +8,7 @@ Both paths use the existing voice control in Feedback and artifact revisions. Se
 
 The server binds only to 127.0.0.1. The launcher creates a random temporary service token and supplies it server-to-server through process environment. It never prints the token, sends it to frontend code or writes `.env.local`. The existing application session/origin guards stay unchanged. LLM settings and organizer credentials stay unchanged. This local option creates no paid account and uses no external STT key. Initial model download needs public Hugging Face access; inference subsequently uses the local cache.
 
-On this machine, Python 3.12 and dependencies/model are already installed under ignored `.local-reviews/`. From PowerShell in `C:\Users\Vladimir\Desktop\reloop AI`:
+With the speech environment prepared, open PowerShell in the repository root and run:
 
 ```powershell
 npm.cmd run dev:local-stt
@@ -16,7 +16,7 @@ npm.cmd run dev:local-stt
 
 Stop any previous port-3000 app before starting. Wait for “Local multilingual CPU speech service ready,” then open **http://localhost:3000/login** with the existing account. Select **Configured transcription service** in Feedback or revision controls. `/api/health` should say transcription configured. A configured health flag alone is not an audio test. Ctrl+C stops the local app/service launcher.
 
-For another Windows computer, use Python 3.12 (64-bit):
+To prepare the speech environment on Windows, use Python 3.12 (64-bit):
 
 ```powershell
 py -3.12 -m venv .local-reviews/stt-venv
@@ -25,7 +25,7 @@ npm.cmd ci
 npm.cmd run dev:local-stt
 ```
 
-On this Codex installation, the bundled Python used to create the venv was `C:\Users\Vladimir\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`; a normal `py -3.12` install is equally valid. Do not use the system Python 3.14 environment unless all native dependencies support it. `RELOOP_STT_PYTHON` can point to another prepared Python executable. `RELOOP_STT_MODEL` selects multilingual `tiny`, `base` (default), or `small`; English-only `.en` models are deliberately unavailable for this bilingual service. Larger models require more memory/download time.
+Use Python 3.12 for the pinned runtime. `RELOOP_STT_PYTHON` can point to another prepared Python executable. `RELOOP_STT_MODEL` selects multilingual `tiny`, `base` (default), or `small`; English-only `.en` models are deliberately unavailable for this bilingual service. Larger models require more memory/download time.
 
 The local service is intended for the Windows/local demo, not a serverless deployment. A hosted deployment needs an appropriately managed persistent CPU service or a verified external STT provider, with private networking/TLS and independent credentials. Do not expose the loopback development service publicly.
 
