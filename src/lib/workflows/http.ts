@@ -2,7 +2,7 @@ import { z } from "zod";
 import { generationRequestSchema, type CaseBundle } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
 import { getCaseBundle } from "@/lib/db/cases";
-import { checkAccess } from "@/lib/server/access";
+import { checkAccess, readAuthSession } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 import { ProviderError } from "@/lib/ai/openai-compatible";
 
@@ -20,7 +20,7 @@ function providerFailure(error: ProviderError) {
 export async function generationRoute(
   request: Request,
   context: { params: Promise<{ id: string }> },
-  generate: (db: NonNullable<ReturnType<typeof getDatabaseClient>>, bundle: CaseBundle) => Promise<CaseBundle>,
+  generate: (db: NonNullable<ReturnType<typeof getDatabaseClient>>, bundle: CaseBundle, ownerUserId?: string) => Promise<CaseBundle>,
 ) {
   const denied = checkAccess(request);
   if (denied) return denied;
@@ -32,12 +32,13 @@ export async function generationRoute(
 
   const db = getDatabaseClient();
   if (!db) return apiFailure("NOT_CONFIGURED", "Database is not configured.", 503);
+  const ownerUserId = readAuthSession(request)?.userId;
   let bundle: CaseBundle | null;
-  try { bundle = await getCaseBundle(db, id); } catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not load the case.", 503, true); }
+  try { bundle = await getCaseBundle(db, id, ownerUserId); } catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not load the case.", 503, true); }
   if (!bundle) return apiFailure("NOT_FOUND", "Case not found.", 404);
 
   try {
-    const result = await generate(db, bundle);
+    const result = await generate(db, bundle, ownerUserId);
     return apiSuccess({ caseId: id, artifacts: result.artifacts, versions: result.versions, findings: result.findings });
   } catch (error) {
     if (error instanceof ProviderError) return providerFailure(error);

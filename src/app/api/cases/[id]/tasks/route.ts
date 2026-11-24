@@ -3,7 +3,7 @@ import { upsertTaskRequestSchema } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
 import { getCaseBundle } from "@/lib/db/cases";
 import { upsertTask } from "@/lib/db/workflows";
-import { checkAccess } from "@/lib/server/access";
+import { checkAccess, readAuthSession } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +20,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const db = getDatabaseClient();
   if (!db) return apiFailure("NOT_CONFIGURED", "Database is not configured.", 503);
   try {
-    const bundle = await getCaseBundle(db, id);
+    const ownerUserId = readAuthSession(request)?.userId;
+    const bundle = await getCaseBundle(db, id, ownerUserId);
     if (!bundle) return apiFailure("NOT_FOUND", "Case not found.", 404);
     const available = new Set([...bundle.evidence, ...bundle.listings, ...bundle.rules].map((source) => source.id));
     if (parsed.data.sourceIds.some((sourceId) => !available.has(sourceId))) {
       return apiFailure("INVALID_REQUEST", "Every task source must belong to this case.", 400);
     }
     const saved = await upsertTask(db, { caseId: id, ...parsed.data });
-    const updated = await getCaseBundle(db, id);
+    const updated = await getCaseBundle(db, id, ownerUserId);
     if (!updated) throw new Error("DATABASE");
     const task = updated.tasks.find((item) => item.id === saved.task_id);
     const auditEvent = updated.audit.find((item) => item.id === saved.audit_id);

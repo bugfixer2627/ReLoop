@@ -111,7 +111,7 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
             <div className="toolbar platform-toolbar" role="group" aria-label={text.listings}>
               {Object.entries(platformDefinitions).map(([id, definition]) => <button key={id} className={`tab ${platform === id ? 'active' : ''}`} type="button" aria-pressed={platform === id} onClick={() => { setPlatform(platformSchema.parse(id)); setActionError(null); }}>{definition.label}</button>)}
             </div>
-            {listingArtifact && <ArtifactWorkspace key={listingArtifact.id} artifact={listingArtifact} versions={versions.filter((version) => version.artifactId === listingArtifact.id)} listing={listing} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/>}
+            {listingArtifact && <ArtifactWorkspace key={listingArtifact.id} artifact={listingArtifact} versions={versions.filter((version) => version.artifactId === listingArtifact.id)} listing={listing} rules={bundle.rules} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/>}
             {!listingArtifact && <div className="empty-state"><strong>{text.noListing}</strong><button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('repair')}>{busy === 'repair' ? '…' : text.generateListings}<Icon name="sparkle" size={13}/></button>{listing && <small>{listing.id} · {listing.snapshotVersion} · {platformDefinitions[platform].segment.toUpperCase()}</small>}</div>}
           </section>
           <div className="dashboard-grid fix-history-grid">

@@ -95,10 +95,7 @@ export async function reviseArtifact(token: string, artifactId: string, input: {
   return request<ResponseData<typeof revisionResponseSchema>>(`/api/artifacts/${encodeURIComponent(artifactId)}/revise`, token, revisionResponseSchema, { method: 'POST', body: jsonBody(body) });
 }
 
-export async function reviewArtifact(token: string, artifactId: string, input: {
-  version: number; decision: 'approved' | 'changes_requested' | 'rejected';
-  reviewerRole: 'support' | 'marketing' | 'qa' | 'compliance'; comment: string;
-}) {
+export async function reviewArtifact(token: string, artifactId: string, input: z.input<typeof reviewArtifactRequestSchema>) {
   const body = reviewArtifactRequestSchema.parse(input);
   return request<ResponseData<typeof reviewResponseSchema>>(`/api/artifacts/${encodeURIComponent(artifactId)}/review`, token, reviewResponseSchema, { method: 'POST', body: jsonBody(body) });
 }

@@ -33,7 +33,7 @@ function originalText(listing: Listing | undefined) {
 }
 
 export function ArtifactWorkspace({
-  artifact, versions, listing, findings, revisions, accessToken, onRefresh, customerContext,
+  artifact, versions, listing, findings, revisions, accessToken, onRefresh, customerContext, rules = [],
 }: {
   artifact: Artifact;
   versions: ArtifactVersion[];
@@ -43,6 +43,7 @@ export function ArtifactWorkspace({
   accessToken: string;
   onRefresh: () => void;
   customerContext?: { feedbackText: string; feedbackLocale: string; policies: CaseBundle['evidence'] };
+  rules?: CaseBundle['rules'];
 }) {
   const { locale } = useWorkspace();
   const latest = useMemo(() => versions.slice().sort((left, right) => right.version - left.version), [versions]);
@@ -50,6 +51,7 @@ export function ArtifactWorkspace({
   const [prompt, setPrompt] = useState('');
   const [instructionLocale, setInstructionLocale] = useState<InputLocale | null>(null);
   const [comment, setComment] = useState('');
+  const [confirmedVersionId, setConfirmedVersionId] = useState<string | null>(null);
   const [decision, setDecision] = useState<'approved' | 'changes_requested' | 'rejected'>('approved');
   const [busy, setBusy] = useState<'revise' | 'review' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +63,13 @@ export function ArtifactWorkspace({
   const currentFindings = current ? findings.filter((finding) => finding.artifactVersionId === current.id) : [];
   const history = revisions.filter((event) => event.artifactId === artifact.id).sort((left, right) => right.toVersion - left.toVersion);
   const chinese = locale === 'zh-CN';
-  const role = artifact.kind === 'support_reply' ? 'support' : 'marketing';
+  const role = artifact.kind === 'support_reply' ? 'support' : 'compliance';
+  const sourceReview = decision === 'approved' && artifact.kind === 'listing_correction'
+    && artifact.platform === 'shopify_us' && current?.validationStatus === 'needs_rule_verification';
+  const applicableRules = sourceReview ? rules.filter((rule) => rule.category !== 'merchant_policy'
+    && rule.market === artifact.market && (rule.platform === null || rule.platform === artifact.platform)
+    && (rule.segment === 'all' || rule.segment === artifact.segment)) : [];
+  const needsConfirmation = sourceReview && (!applicableRules.length || confirmedVersionId !== current?.id || !comment.trim());
   const previous = latest.find((v) => current && v.version < current.version);
   const unsaved = !!prompt.trim() || !!comment.trim();
   useEffect(() => {
@@ -96,12 +104,16 @@ export function ArtifactWorkspace({
   }
 
   async function submitReview() {
-    if (!current || !isCurrent || busy) return;
+    if (!current || !isCurrent || busy || needsConfirmation) return;
     setBusy('review'); setError(null); setNotice(null);
     try {
-      await reviewArtifact(accessToken, artifact.id, { version: current.version, decision, reviewerRole: role, comment: comment.trim() });
+      await reviewArtifact(accessToken, artifact.id, {
+        version: current.version, decision, reviewerRole: role, comment: comment.trim(),
+        ruleChecks: sourceReview ? applicableRules.map(({ id, sourceUrl }) => ({ ruleId: id, sourceUrl })) : undefined,
+      });
       setNotice(chinese ? '审核结果已由服务器保存。' : 'The review decision was saved by the server.');
       setComment('');
+      setConfirmedVersionId(null);
       onRefresh();
     } catch (reason) {
       setError(isUnavailable(reason)
@@ -128,7 +140,37 @@ export function ArtifactWorkspace({
       </aside></div>
       {currentFindings.length > 0 && <div className="saved-findings">{currentFindings.map((finding) => <div className="finding" key={finding.id}><div className="finding-mark">{finding.severity === 'blocker' ? '!' : 'i'}</div><div><span className="badge badge-neutral">{finding.category} · {finding.severity}</span><p>{chinese ? finding.explanationZh : finding.explanationEn}</p>{(finding.originalSpan || finding.proposedSpan) && <div className="finding-diff"><div><strong>{chinese ? '原文' : 'Before'}</strong><p>{finding.originalSpan || '—'}</p></div><div><strong>{chinese ? '建议文本' : 'Proposed text'}</strong><p>{finding.proposedSpan || '—'}</p></div></div>}<small>{finding.sourceIds.join(' · ')}</small></div></div>)}</div>}
       {current && <div className="artifact-revision"><div className="card-title-row"><label htmlFor={`prompt-${artifact.id}`} className="card-title">{chinese ? '对话修订' : 'Conversational revision'}</label><span className="badge badge-neutral">{isCurrent ? (chinese ? '当前版本' : 'Current version') : (chinese ? '历史版本' : 'Historical version')}</span></div><textarea id={`prompt-${artifact.id}`} name="promptText" className="textarea" rows={2} maxLength={4000} value={prompt} disabled={!isCurrent || busy !== null} onChange={(event) => setPrompt(event.target.value)} placeholder={chinese ? '输入后续修改指令…' : 'Describe the revision…'}/><VoiceInput inputLocale={instructionLocale ?? locale} disabled={!isCurrent || busy !== null} onConfirmed={(value) => setPrompt((currentPrompt) => currentPrompt ? `${currentPrompt}\n${value}` : value)}/><div className="artifact-actions"><span className="muted" role="status">{prompt.trim() ? (chinese ? '指令尚未提交；草稿未更改。' : 'Instruction not submitted; saved draft unchanged.') : (chinese ? '输入指令以生成新版本。' : 'Describe a change to create a new version.')}</span><button className="btn btn-primary btn-sm" type="button" disabled={!isCurrent || !prompt.trim() || busy !== null} onClick={submitRevision}>{busy === 'revise' ? (chinese ? '正在修订…' : 'Revising…') : (chinese ? '提交修订' : 'Submit revision')}<Icon name="arrow" size={13}/></button></div></div>}
-      {current && <div className="artifact-review"><div className="card-title-row"><span className="card-title">{chinese ? '人工审核' : 'Human review'}</span><span className={`badge ${current.reviewStatus === 'approved' ? 'badge-safe' : 'badge-review'}`}>{current.reviewStatus}</span></div><div className="review-fields"><select aria-label={chinese ? '审核决定' : 'Review decision'} value={decision} disabled={!isCurrent || busy !== null} onChange={(event) => setDecision(event.target.value as typeof decision)}><option value="approved">{chinese ? '批准草稿' : 'Approve draft'}</option><option value="changes_requested">{chinese ? '要求修改' : 'Request changes'}</option><option value="rejected">{chinese ? '拒绝草稿' : 'Reject draft'}</option></select><input className="input" aria-label={chinese ? '审核备注' : 'Review note'} name="reviewComment" value={comment} disabled={!isCurrent || busy !== null} maxLength={2000} onChange={(event) => setComment(event.target.value)} placeholder={chinese ? '审核备注（可选）…' : 'Review note (optional)…'}/><button className="btn btn-soft btn-sm" type="button" disabled={!isCurrent || busy !== null} onClick={() => reviewDialog.current?.showModal()}>{busy === 'review' ? (chinese ? '正在保存…' : 'Saving…') : (chinese ? '提交审核' : 'Submit review')}</button></div><p className="muted">{chinese ? '此操作保存演示业务角色的决定，不会向外部平台发布。账户权限仍需后端接入。' : 'Saves a demo business-role decision; does not publish externally. Account permissions require backend integration.'}</p></div>}
+      {current && <div className="artifact-review">
+        <div className="card-title-row">
+          <span className="card-title">{chinese ? '人工审核' : 'Human review'}</span>
+          <span className={current.reviewStatus === 'approved' ? 'badge badge-safe' : 'badge badge-review'}>{current.reviewStatus}</span>
+        </div>
+        {sourceReview && <fieldset className="draft-source-review" disabled={!isCurrent || busy !== null}>
+          <legend>{chinese ? '核验本版本的规则来源' : 'Check sources for this version'}</legend>
+          {applicableRules.length ? <>
+            <ul>{applicableRules.map((rule) => <li key={rule.id}>
+              <a href={rule.sourceUrl} target="_blank" rel="noreferrer" translate="no">{rule.id}</a>
+              <p className="muted">{rule.applicability}</p>
+            </li>)}</ul>
+            <label>
+              <input type="checkbox" name="confirmRuleSources" checked={confirmedVersionId === current.id} onChange={(event) => setConfirmedVersionId(event.target.checked ? current.id : null)}/>
+              {chinese ? '我已阅读所列来源，并确认本草稿满足其中适用的要求。' : 'I checked the listed sources and confirmed this draft meets the applicable requirements.'}
+            </label>
+          </> : <p className="muted">{chinese ? '当前草稿缺少适用的规则来源。' : 'This draft needs an applicable rule source.'}</p>}
+        </fieldset>}
+        <div className="review-fields">
+          <select aria-label={chinese ? '审核决定' : 'Review decision'} value={decision} disabled={!isCurrent || busy !== null} onChange={(event) => setDecision(event.target.value as typeof decision)}>
+            <option value="approved">{chinese ? '批准草稿' : 'Approve draft'}</option>
+            <option value="changes_requested">{chinese ? '要求修改' : 'Request changes'}</option>
+            <option value="rejected">{chinese ? '拒绝草稿' : 'Reject draft'}</option>
+          </select>
+          <input className="input" aria-label={sourceReview ? (chinese ? '核验依据' : 'Review rationale') : (chinese ? '审核备注' : 'Review note')} name="reviewComment" autoComplete="off" value={comment} disabled={!isCurrent || busy !== null} required={sourceReview} maxLength={2000} onChange={(event) => setComment(event.target.value)} placeholder={sourceReview ? (chinese ? '说明适用条款及草稿依据…' : 'Explain why the draft meets the applicable rule…') : (chinese ? '审核备注（可选）…' : 'Review note (optional)…')}/>
+          <button className="btn btn-soft btn-sm" type="button" disabled={!isCurrent || busy !== null || needsConfirmation} onClick={() => reviewDialog.current?.showModal()}>
+            {busy === 'review' ? (chinese ? '正在保存…' : 'Saving…') : (chinese ? '提交审核' : 'Submit review')}
+          </button>
+        </div>
+        <p className="muted">{chinese ? '审核结果保存到此草稿版本。' : 'Your decision is saved to this draft version.'}</p>
+      </div>}
       <dialog ref={reviewDialog} className="review-confirmation" aria-labelledby={`review-title-${artifact.id}`}><h2 id={`review-title-${artifact.id}`}>{chinese ? '确认审核决定' : 'Confirm review decision'}</h2><p>{chinese ? '版本' : 'Version'} {current?.version} · {decision} · {role}</p><p>{chinese ? '只有服务器保存成功后才会更新审核状态。不会发布到外部店铺。' : 'Review status changes only after the server confirms the save. Nothing is published to a storefront.'}</p><div className="artifact-actions"><button type="button" className="btn btn-soft" autoFocus onClick={() => reviewDialog.current?.close()}>{chinese ? '取消' : 'Cancel'}</button><button type="button" className="btn btn-primary" onClick={() => { reviewDialog.current?.close(); void submitReview(); }}>{chinese ? '确认并保存' : 'Confirm & save'}</button></div></dialog>
       {notice && <p className="api-notice" role="status">{notice}</p>}
       {error && <p className="api-error" role="alert">{error}</p>}

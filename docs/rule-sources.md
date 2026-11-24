@@ -22,3 +22,5 @@ Exact IDs and conditions in the fixture/database govern when aliases above diffe
 The hosted database contains additional records marked verified. The read-only test counted 10 such records; it did not establish their substantive legal correctness or evaluate proposed content against them. This milestone does not update rule records or the hosted database.
 
 The current checker emits separate evidence, market-law and platform-rule findings. `RULE_REQUIRES_VERIFICATION` never makes an artifact checked, even when its source record is marked verified. Human source/applicability review and substantive content evaluation remain release gates. No legal compliance certification is offered.
+
+For the Shopify US demo, the signed-in case owner can compare the saved correction with the applicable sources and submit an internal approval with a written rationale. The audit records the reviewer, version, source links, and timestamp. The findings for that version record the manual check, while the source inventory retains its existing verification state.

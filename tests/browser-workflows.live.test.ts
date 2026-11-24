@@ -52,7 +52,7 @@ describe.skipIf(process.env.RELOOP_BROWSER_WORKFLOWS !== "1")("real browser work
     const address = bridge.address() as { port: number };
     const previousKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     process.env.SUPABASE_SERVICE_ROLE_KEY = localKey;
-    try { cookie = createAuthSession("synthetic-local-browser-test"); }
+    try { cookie = createAuthSession("10000000-0000-4000-8000-000000000001"); }
     finally { if (previousKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = previousKey; }
     next = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(port)], {
       stdio: "ignore", windowsHide: true,

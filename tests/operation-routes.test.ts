@@ -35,7 +35,7 @@ describe("analysis, task, and review endpoints", () => {
     const params = mocks.rpc.mock.calls[0][1];
     expect(params.p_findings).toHaveLength(3);
     expect(params.p_findings[0].status).toBe("documented_mismatch");
-    expect(mocks.analysis).toHaveBeenCalledWith(expect.anything(), demoBundle);
+    expect(mocks.analysis).toHaveBeenCalledWith(expect.anything(), demoBundle, undefined);
     expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.analysis.mock.invocationCallOrder[0]);
     expect((await response.json()).data.artifacts).toEqual(demoBundle.artifacts);
   });

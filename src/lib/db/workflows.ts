@@ -143,6 +143,25 @@ export async function recordReview(
   return assertRpc<{ artifact_id: string; version_id: string; audit_id: string }>(result.data, result.error);
 }
 
+export async function recordOwnedReview(
+  db: SupabaseClient,
+  input: {
+    caseId: string; artifactId: string; version: number; ownerUserId: string; decision: string;
+    comment: string; ruleChecks?: { ruleId: string; sourceUrl: string }[];
+  },
+) {
+  const result = await db.rpc("reloop_record_owned_review", {
+    p_case_id: input.caseId,
+    p_artifact_id: input.artifactId,
+    p_version: input.version,
+    p_decision: input.decision,
+    p_comment: input.comment,
+    p_owner_user_id: input.ownerUserId,
+    p_rule_checks: input.ruleChecks ?? null,
+  });
+  return assertRpc<{ artifact_id: string; version_id: string; audit_id: string }>(result.data, result.error);
+}
+
 export async function upsertTask(
   db: SupabaseClient,
   input: { caseId: string; taskId?: string; assignedRole: string; kind: string; title: string; description: string; state: string; sourceIds: string[] },

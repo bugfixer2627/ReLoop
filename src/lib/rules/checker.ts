@@ -44,7 +44,9 @@ export function checkListingEvidence(bundle: CaseBundle, listingId?: string): Wo
   }
 
   for (const listing of listings) {
-    for (const rule of bundle.rules.filter((candidate) => candidate.category !== "merchant_policy" && (candidate.platform === listing.platform || (candidate.platform === null && candidate.market === listing.market)))) {
+    for (const rule of bundle.rules.filter((candidate) => candidate.category !== "merchant_policy"
+      && candidate.market === listing.market && (candidate.platform === null || candidate.platform === listing.platform)
+      && (candidate.segment === "all" || candidate.segment === listing.segment))) {
       findings.push({
         listing_id: listing.id,
         category: rule.category === "platform_rule" ? "platform_rule" : "market_law",

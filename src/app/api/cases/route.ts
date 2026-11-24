@@ -1,7 +1,7 @@
 import { createCaseRequestSchema } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
 import { createCase, listCases } from "@/lib/db/cases";
-import { checkAccess } from "@/lib/server/access";
+import { checkAccess, readAuthSession } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const db = getDatabaseClient();
   if (!db) return apiFailure("NOT_CONFIGURED", "Database is not configured.", 503);
-  try { return apiSuccess({ cases: await listCases(db) }); }
+  try { return apiSuccess({ cases: await listCases(db, readAuthSession(request)?.userId) }); }
   catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not load cases.", 503, true); }
 }
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const db = getDatabaseClient();
   if (!db) return apiFailure("NOT_CONFIGURED", "Database is not configured.", 503);
   try {
-    const id = await createCase(db, parsed.data);
+    const id = await createCase(db, parsed.data, readAuthSession(request)?.userId);
     return id ? apiSuccess({ caseId: id }, 201) : apiFailure("UNKNOWN_SKU", "Product not found.", 404);
   } catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not create case.", 503, true); }
 }

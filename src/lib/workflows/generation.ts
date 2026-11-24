@@ -24,8 +24,8 @@ export function validationStatus(bundle: CaseBundle, findings: { category: strin
     : "checked" as const;
 }
 
-async function reload(db: SupabaseClient, caseId: string) {
-  const bundle = await getCaseBundle(db, caseId);
+async function reload(db: SupabaseClient, caseId: string, ownerUserId?: string) {
+  const bundle = await getCaseBundle(db, caseId, ownerUserId);
   if (!bundle) throw new Error("Case disappeared after workflow write");
   return bundle;
 }
@@ -36,7 +36,7 @@ function requireEvidence(bundle: CaseBundle) {
   }
 }
 
-export async function generateAnalysis(db: SupabaseClient, bundle: CaseBundle) {
+export async function generateAnalysis(db: SupabaseClient, bundle: CaseBundle, ownerUserId?: string) {
   const existing = bundle.artifacts.find((artifact) => artifact.kind === "investigation_summary");
   if (existing) return bundle;
   requireEvidence(bundle);
@@ -58,10 +58,10 @@ export async function generateAnalysis(db: SupabaseClient, bundle: CaseBundle) {
     validationStatus: validationStatus(bundle, findings),
     findings,
   });
-  return reload(db, bundle.case.id);
+  return reload(db, bundle.case.id, ownerUserId);
 }
 
-export async function generateSupport(db: SupabaseClient, bundle: CaseBundle) {
+export async function generateSupport(db: SupabaseClient, bundle: CaseBundle, ownerUserId?: string) {
   const existing = bundle.artifacts.find((artifact) => artifact.kind === "support_reply");
   if (existing) return bundle;
   requireEvidence(bundle);
@@ -82,10 +82,10 @@ export async function generateSupport(db: SupabaseClient, bundle: CaseBundle) {
     validationStatus: validationStatus(bundle, findings),
     findings,
   });
-  return reload(db, bundle.case.id);
+  return reload(db, bundle.case.id, ownerUserId);
 }
 
-export async function generateRepair(db: SupabaseClient, bundle: CaseBundle) {
+export async function generateRepair(db: SupabaseClient, bundle: CaseBundle, ownerUserId?: string) {
   if (platforms.every((platform) => bundle.artifacts.some((artifact) => artifact.kind === "listing_correction" && artifact.platform === platform))) return bundle;
   requireEvidence(bundle);
   const adapter = getAiAdapter();
@@ -110,5 +110,5 @@ export async function generateRepair(db: SupabaseClient, bundle: CaseBundle) {
       findings,
     });
   }
-  return reload(db, bundle.case.id);
+  return reload(db, bundle.case.id, ownerUserId);
 }

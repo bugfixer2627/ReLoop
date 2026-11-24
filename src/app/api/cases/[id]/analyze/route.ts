@@ -4,8 +4,8 @@ import { saveEvidenceAnalysis } from "@/lib/workflows/evidence";
 
 export const dynamic = "force-dynamic";
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  return generationRoute(request, context, async (db, bundle) => {
+  return generationRoute(request, context, async (db, bundle, ownerUserId) => {
     await saveEvidenceAnalysis(db, bundle);
-    return generateAnalysis(db, bundle);
+    return generateAnalysis(db, bundle, ownerUserId);
   });
 }

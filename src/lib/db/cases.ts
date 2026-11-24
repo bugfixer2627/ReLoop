@@ -18,28 +18,30 @@ function resultData<T>(result: { data: T; error: unknown }): T {
   return result.data;
 }
 
-export async function listCases(db: SupabaseClient) {
-  const rows = resultData(await db.from("cases").select("*, products!inner(sku)").order("created_at", { ascending: false }));
+export async function listCases(db: SupabaseClient, ownerUserId: string | null = null) {
+  const query = db.from("cases").select("*, products!inner(sku)").order("created_at", { ascending: false });
+  const rows = resultData(await (ownerUserId ? query.eq("owner_user_id", ownerUserId) : query.is("owner_user_id", null)));
   return (rows ?? []).map((row: Row) => {
     const product = row.products as Row;
     return caseSchema.parse({ ...mapRow(row), sku: product.sku });
   });
 }
 
-export async function createCase(db: SupabaseClient, input: CreateCase) {
+export async function createCase(db: SupabaseClient, input: CreateCase, ownerUserId: string | null = null) {
   const product = resultData(await db.from("products").select("id, synthetic").eq("sku", input.sku).maybeSingle());
   if (!product || !product.synthetic) return null;
   const row = resultData(await db.from("cases").insert({
     product_id: product.id, channel: input.channel, feedback_text: input.feedbackText,
     feedback_locale: input.feedbackLocale, merchant_instruction: input.merchantInstruction,
-    merchant_locale: input.merchantLocale, synthetic: true,
+    merchant_locale: input.merchantLocale, synthetic: true, owner_user_id: ownerUserId,
   }).select("id").single());
   if (!row) throw new Error("Database returned no case");
   return row.id as string;
 }
 
-export async function getCaseBundle(db: SupabaseClient, id: string) {
-  const caseRow = resultData(await db.from("cases").select("*").eq("id", id).maybeSingle());
+export async function getCaseBundle(db: SupabaseClient, id: string, ownerUserId: string | null = null) {
+  const query = db.from("cases").select("*").eq("id", id);
+  const caseRow = resultData(await (ownerUserId ? query.eq("owner_user_id", ownerUserId) : query.is("owner_user_id", null)).maybeSingle());
   if (!caseRow) return null;
   const productId = caseRow.product_id;
   const [product, evidence, listings, rules, artifacts, versions, findings, revisions, tasks, audit] = await Promise.all([

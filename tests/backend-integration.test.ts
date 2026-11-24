@@ -9,7 +9,7 @@ import { caseBundleResponseSchema, generationResponseSchema, revisionResponseSch
 vi.mock("server-only", () => ({}));
 const state = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/db/client", () => ({ getDatabaseClient: () => state.client }));
-import { POST as create } from "@/app/api/cases/route";
+import { GET as list, POST as create } from "@/app/api/cases/route";
 import { GET as load } from "@/app/api/cases/[id]/route";
 import { POST as analyze } from "@/app/api/cases/[id]/analyze/route";
 import { POST as support } from "@/app/api/cases/[id]/support/route";
@@ -17,6 +17,7 @@ import { POST as repair } from "@/app/api/cases/[id]/repair/route";
 import { POST as revise } from "@/app/api/artifacts/[id]/revise/route";
 import { POST as review } from "@/app/api/artifacts/[id]/review/route";
 import { POST as task } from "@/app/api/cases/[id]/tasks/route";
+import { AUTH_SESSION_COOKIE, createAuthSession } from "@/lib/server/access";
 
 let db: PGlite;
 let seed: string;
@@ -24,22 +25,25 @@ let reset: string;
 let failure = "";
 const token = "integration-test-token-".padEnd(40, "x");
 type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
-async function call(handler: Handler, id: string, body?: unknown) {
+async function call(handler: Handler, id: string, body?: unknown, userId?: string) {
+  const headers = new Headers({ origin: "http://localhost", "content-type": "application/json" });
+  if (userId) headers.set("cookie", `${AUTH_SESSION_COOKIE}=${createAuthSession(userId)}`);
+  else headers.set("authorization", `Bearer ${token}`);
   return handler(new Request(`http://localhost/api/test/${id}`, {
     method: body === undefined ? "GET" : "POST",
-    headers: { authorization: `Bearer ${token}`, origin: "http://localhost", "content-type": "application/json" },
+    headers,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }), { params: Promise.resolve({ id }) });
 }
-async function bundle(id: string) {
-  const response = await call(load, id);
+async function bundle(id: string, userId?: string) {
+  const response = await call(load, id, undefined, userId);
   expect(response.status).toBe(200);
   const parsed = caseBundleResponseSchema.parse(await response.json());
   if (!parsed.ok) throw new Error(parsed.error.code);
   return parsed.data;
 }
-async function newCase(locale = "zh-CN", sku = "RL-LAMP-01") {
-  const response = await call(create, "new", { sku, channel: "shopify_us", feedbackText: demoBundle.case.feedbackText, feedbackLocale: "en-US", merchantInstruction: locale === "zh-CN" ? demoBundle.case.merchantInstruction : "Investigate the complaint and compare documented conditions.", merchantLocale: locale, synthetic: true });
+async function newCase(locale = "zh-CN", sku = "RL-LAMP-01", userId?: string) {
+  const response = await call(create, "new", { sku, channel: "shopify_us", feedbackText: demoBundle.case.feedbackText, feedbackLocale: "en-US", merchantInstruction: locale === "zh-CN" ? demoBundle.case.merchantInstruction : "Investigate the complaint and compare documented conditions.", merchantLocale: locale, synthetic: true }, userId);
   return { response, body: await response.json() };
 }
 
@@ -56,6 +60,7 @@ beforeEach(async () => {
   failure = "";
   state.client = sqlClient(db);
   vi.stubEnv("DEMO_ACCESS_TOKEN", token);
+  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "embedded-test-signing-key");
   vi.stubEnv("LLM_PROVIDER", "openai_compatible");
   vi.stubEnv("LLM_BASE_URL", "https://provider-test.invalid/v1");
   vi.stubEnv("LLM_API_KEY", "test-only");
@@ -222,5 +227,62 @@ describe("real local SQL + actual API handlers + MOCK provider HTTP", () => {
     expect(saved.artifacts).toHaveLength(1);
     expect(saved.versions).toHaveLength(1);
     expect(saved.audit.filter((item) => item.action === "artifact_generated")).toHaveLength(1);
+  });
+});
+
+describe("separate demo accounts and Shopify draft sign-off", () => {
+  const merchant = "10000000-0000-4000-8000-000000000001";
+  const otherMerchant = "10000000-0000-4000-8000-000000000002";
+
+  it("keeps each account's cases and their workflow records private", async () => {
+    const first = await newCase("en-US", "RL-LAMP-01", merchant);
+    const second = await newCase("en-US", "RL-LAMP-01", otherMerchant);
+    expect(first.response.status).toBe(201);
+    expect(second.response.status).toBe(201);
+    const firstId = first.body.data.caseId as string;
+    const secondId = second.body.data.caseId as string;
+    const ownList = await call(list, "list", undefined, merchant);
+    expect(ownList.status).toBe(200);
+    const ownCases = (await ownList.json()).data.cases as { id: string }[];
+    expect(ownCases.map(({ id }) => id)).toContain(firstId);
+    expect(ownCases.map(({ id }) => id)).not.toContain(secondId);
+    expect((await call(load, secondId, undefined, merchant)).status).toBe(404);
+    expect((await call(load, firstId)).status).toBe(404);
+    expect((await call(analyze, secondId, {}, merchant)).status).toBe(404);
+    expect((await call(analyze, firstId, {}, merchant)).status).toBe(200);
+    const draft = (await bundle(firstId, merchant)).artifacts[0];
+    expect((await call(revise, draft.id, { expectedVersion: 1, promptText: "Revise", promptLocale: "en-US" }, otherMerchant)).status).toBe(404);
+    expect((await call(review, draft.id, { version: 1, decision: "rejected", reviewerRole: "support", comment: "" }, otherMerchant)).status).toBe(404);
+  });
+
+  it("records an applicable source review for only the current supported draft", async () => {
+    const created = await newCase("en-US", "RL-LAMP-01", merchant);
+    const id = created.body.data.caseId as string;
+    expect((await call(repair, id, {}, merchant)).status).toBe(200);
+    const draft = await bundle(id, merchant);
+    const artifact = draft.artifacts.find((item) => item.kind === "listing_correction" && item.platform === "shopify_us")!;
+    const ruleChecks = draft.rules
+      .filter((rule) => rule.market === "US" && rule.category === "market_law")
+      .map(({ id, sourceUrl }) => ({ ruleId: id, sourceUrl }));
+    const input = { version: 1, decision: "approved", reviewerRole: "marketing", comment: "Reviewed the attached sources and the supported runtime claim." };
+    expect((await call(review, artifact.id, input, merchant)).status).toBe(422);
+    expect((await call(review, artifact.id, { ...input, ruleChecks: [{ ...ruleChecks[0], sourceUrl: "https://wrong.example" }] }, merchant)).status).toBe(422);
+    expect((await call(review, artifact.id, { ...input, ruleChecks }, otherMerchant)).status).toBe(404);
+
+    const accepted = await call(review, artifact.id, { ...input, ruleChecks }, merchant);
+    expect(accepted.status).toBe(200);
+    expect((await accepted.json()).data).toMatchObject({
+      version: { version: 1, reviewStatus: "approved", validationStatus: "checked" },
+      auditEvent: { actorRole: "compliance", payload: { reviewerUserId: merchant, ruleChecks, rationale: input.comment } },
+    });
+
+    failure = "unsafe";
+    const revision = await call(revise, artifact.id, { expectedVersion: 1, promptText: "Make a stronger claim.", promptLocale: "en-US" }, merchant);
+    expect(revision.status).toBe(200);
+    expect((await call(review, artifact.id, { ...input, ruleChecks }, merchant)).status).toBe(409);
+    expect((await call(review, artifact.id, { ...input, version: 2, ruleChecks }, merchant)).status).toBe(422);
+    const reloaded = await bundle(id, merchant);
+    expect(reloaded.versions.find((version) => version.artifactId === artifact.id && version.version === 1)?.reviewStatus).toBe("approved");
+    expect(reloaded.versions.find((version) => version.artifactId === artifact.id && version.version === 2)?.reviewStatus).toBe("draft");
   });
 });

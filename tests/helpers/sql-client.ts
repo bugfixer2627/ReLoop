@@ -19,7 +19,7 @@ export function sqlFetch(db: PGlite): typeof fetch {
       if (parts.includes("rpc")) {
         if (!name.startsWith("reloop_")) throw new Error("Unexpected SQL test RPC");
         const args = Object.entries(await request.json());
-        rows = (await db.query<Record<string, unknown>>(`select * from ${identifier(name)}(${args.map(([key], index) => `${identifier(key)} => $${index + 1}`).join(",")})`, args.map(([key, value]) => ["p_content", "p_findings", "p_task", "p_version", "p_revision", "p_review"].includes(key) ? JSON.stringify(value) : value))).rows;
+        rows = (await db.query<Record<string, unknown>>(`select * from ${identifier(name)}(${args.map(([key], index) => `${identifier(key)} => $${index + 1}`).join(",")})`, args.map(([key, value]) => ["p_content", "p_findings", "p_task", "p_version", "p_revision", "p_review", "p_rule_checks"].includes(key) && value !== null ? JSON.stringify(value) : value))).rows;
       } else {
         if (!tables.has(name)) throw new Error("Unexpected SQL test table");
         if (request.method === "POST") {
@@ -27,7 +27,11 @@ export function sqlFetch(db: PGlite): typeof fetch {
           rows = (await db.query<Record<string, unknown>>(`insert into ${identifier(name)} (${entries.map(([key]) => identifier(key)).join(",")}) values (${entries.map((_, index) => `$${index + 1}`).join(",")}) returning *`, entries.map(([, value]) => value))).rows;
         } else {
           const filters = [...url.searchParams].filter(([, value]) => value.startsWith("eq."));
-          const where = filters.length ? ` where ${filters.map(([key], index) => `${identifier(key)} = $${index + 1}`).join(" and ")}` : "";
+          const predicates = filters.map(([key], index) => `${identifier(key)} = $${index + 1}`);
+          for (const [key, value] of url.searchParams) {
+            if (value === "is.null") predicates.push(`${identifier(key)} is null`);
+          }
+          const where = predicates.length ? ` where ${predicates.join(" and ")}` : "";
           rows = (await db.query<Record<string, unknown>>(`select * from ${identifier(name)}${where}`, filters.map(([, value]) => value.slice(3)))).rows;
           if (name === "cases" && url.searchParams.get("select")?.includes("products!inner")) {
             for (const row of rows) row.products = (await db.query("select sku from products where id = $1", [row.product_id])).rows[0];

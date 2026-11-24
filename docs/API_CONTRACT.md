@@ -4,6 +4,8 @@
 
 Browser sign-in uses `POST /api/auth/login` with `{email,password}`. Supabase Auth verifies the credentials; the server issues a signed HttpOnly, SameSite cookie with an eight-hour lifetime. `GET /api/auth/session` reports whether it is valid and `POST /api/auth/logout` clears it. Public registration is disabled; users are provisioned by a Supabase administrator. Browser mutations require a same-origin `Origin` header. A configured `DEMO_ACCESS_TOKEN` remains available only for trusted API clients during migration and is not shown in the login UI.
 
+Browser case operations are scoped to the signed-in owner. An out-of-scope case or artifact returns `NOT_FOUND`. Legacy integration clients can access unowned fixtures.
+
 ## Envelopes
 
 ```json
@@ -80,7 +82,9 @@ On PostgREST PGRST202 (missing signature) only, revision, review and task reposi
 {"version":3,"decision":"changes_requested","reviewerRole":"compliance","comment":"Keep test conditions in the proposed copy."}
 ```
 
-Support reviews support outputs; marketing/compliance review listings. Old-head approvals return `CONFLICT`; blockers/unresolved required evidence/rules return `REVIEW_BLOCKED`. Persist review, state change and audit atomically. Approval is for an internal draft only.
+For signed-in demo accounts, the server assigns the case owner the support role for replies and the compliance role for listing corrections. Legacy integration requests use the supplied role for their fixtures. Old-head approvals return `CONFLICT`. Blocking evidence and unresolved checks return `REVIEW_BLOCKED`.
+
+To approve a Shopify US listing correction with pending rule checks, the owner supplies `ruleChecks` as a list of `{ruleId, sourceUrl}` pairs for the applicable sources and a rationale in `comment`. The server stores the source check and internal approval atomically with the reviewer's account ID and an audit timestamp. A revision starts a new check for the new version.
 
 ### Task
 

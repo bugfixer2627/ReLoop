@@ -13,4 +13,6 @@
 
 Repositories map snake_case database rows to camelCase DTOs and validate them against the shared contracts. Database tables use RLS, and the trusted server makes application queries with the service role. See [architecture](../../../docs/ARCHITECTURE.md) for the access boundary.
 
+Demo browser accounts each own their new cases. Cases created before ownership was introduced and cases created by the legacy integration token are unowned fixtures. Signed-in browser accounts start with their own cases and can create a synthetic case through Feedback.
+
 Artifact identity and artifact version are separate. Revision creation must lock/check the current version and atomically insert the next version, revision event, findings and audit event. Return `CONFLICT` for stale `expectedVersion`; do not increment the head if generation/validation fails. Reviews target a version, never the entire artifact. Check the same case for every related record.

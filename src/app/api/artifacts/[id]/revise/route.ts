@@ -6,7 +6,7 @@ import { createRevision } from "@/lib/db/workflows";
 import { getAiAdapter, ProviderError } from "@/lib/ai/openai-compatible";
 import { checkGeneratedContent, checkListingEvidence } from "@/lib/rules/checker";
 import { validationStatus } from "@/lib/workflows/generation";
-import { checkAccess } from "@/lib/server/access";
+import { checkAccess, readAuthSession } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const artifactResult = await db.from("artifacts").select("case_id").eq("id", id).maybeSingle();
     if (artifactResult.error) throw new Error("DATABASE");
     if (!artifactResult.data) return apiFailure("NOT_FOUND", "Artifact not found.", 404);
-    const bundle = await getCaseBundle(db, artifactResult.data.case_id as string);
+    const ownerUserId = readAuthSession(request)?.userId;
+    const bundle = await getCaseBundle(db, artifactResult.data.case_id as string, ownerUserId);
     if (!bundle) return apiFailure("NOT_FOUND", "Case not found.", 404);
     const artifact = bundle.artifacts.find((item) => item.id === id);
     if (!artifact) return apiFailure("NOT_FOUND", "Artifact not found.", 404);
@@ -56,7 +57,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       validationStatus: validationStatus(bundle, findings),
       findings,
     });
-    const updated = await getCaseBundle(db, bundle.case.id);
+    const updated = await getCaseBundle(db, bundle.case.id, ownerUserId);
     if (!updated) throw new Error("DATABASE");
     const nextArtifact = updated.artifacts.find((item) => item.id === id);
     const nextVersion = updated.versions.find((item) => item.id === saved.version_id);

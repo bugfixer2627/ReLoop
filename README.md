@@ -55,7 +55,13 @@ npm run db:seed
 npm run auth:create-demo-user
 ```
 
-For an existing workspace, use the account and database already provisioned by its administrator. [Database notes](src/lib/db/README.md) cover migration and reset behavior.
+For an existing demo database, run `npm run db:apply` before starting this version. [Database notes](src/lib/db/README.md) cover migration and reset behavior.
+
+### Rehearse the demo
+
+1. Run `npm run auth:create-demo-user` once per tester. Each account starts with its own case list. Use **Feedback** and load the synthetic example to create a case.
+2. In **Fix & Approve**, generate corrections and select **Shopify US**. Open the listed rule sources and compare them with the saved draft.
+3. Confirm the source check, enter your rationale, and submit the approval. ReLoop records your account, source links, and decision for that version. Revising the draft opens a new review.
 
 <details>
 <summary>Local network and startup options</summary>

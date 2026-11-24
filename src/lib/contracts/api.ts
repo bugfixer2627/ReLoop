@@ -101,6 +101,10 @@ export const revisionResponseSchema = responseSchema(z.object({
 export const reviewArtifactRequestSchema = z.strictObject({
   version: z.number().int().positive(), decision: reviewDecisionSchema,
   reviewerRole: businessRoleSchema, comment: z.string().trim().max(2000),
+  ruleChecks: z.array(z.strictObject({
+    ruleId: z.string().min(1).max(200),
+    sourceUrl: z.url().refine((url) => url.startsWith("https://")),
+  })).min(1).max(20).optional(),
 });
 export const reviewResponseSchema = responseSchema(z.object({
   caseId: z.uuid(), artifactId: z.uuid(), version: artifactVersionSchema, auditEvent: auditEventSchema,
