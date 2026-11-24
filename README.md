@@ -84,3 +84,10 @@ This is the CI sequence for lint, TypeScript, tests, and the production build. W
 | [`scripts/`](scripts/) and [`tests/`](tests/) | Local service launchers, database tooling, and verification |
 
 [Architecture](docs/ARCHITECTURE.md) · [API contract](docs/API_CONTRACT.md) · [Acceptance criteria](docs/ACCEPTANCE.md) · [Third-party credits](docs/THIRD_PARTY_COMPONENTS.md)
+
+## License
+
+ReLoop's original software is available under the [MIT License](LICENSE). The
+ReLoop name, logos, and brand artwork are excluded from that grant. Third-party
+materials retain their own terms. See [UI attribution](docs/UI_ATTRIBUTION.md)
+and the [third-party credits](docs/THIRD_PARTY_COMPONENTS.md).
