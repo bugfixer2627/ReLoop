@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { ArtifactContent, ArtifactVersion, CaseBundle, InputLocale, Platform } from "@/lib/contracts";
+import type { ArtifactContent, ArtifactVersion, CaseBundle, InputLocale, Locale, Platform } from "@/lib/contracts";
 import type { feedbackExtractionSchema } from "@/lib/contracts";
 
 export type ExtractedFeedback = z.infer<typeof feedbackExtractionSchema>;
@@ -12,7 +12,7 @@ export interface AiAdapter {
   summarize(context: CaseBundle, locale: InputLocale, extraction?: ExtractedFeedback): Promise<ArtifactContent>;
   generateSupport(context: CaseBundle): Promise<ArtifactContent>;
   generateListing(context: CaseBundle, platform: Platform): Promise<ArtifactContent>;
-  revise(context: CaseBundle, current: ArtifactVersion, prompt: string, locale: InputLocale): Promise<ArtifactContent>;
+  revise(context: CaseBundle, current: ArtifactVersion, prompt: string, locale: InputLocale, outputLocale?: Locale): Promise<ArtifactContent>;
 }
 
 export interface TranscriptionAdapter {

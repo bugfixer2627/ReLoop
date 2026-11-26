@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   artifactSchema, artifactVersionSchema, auditEventSchema, caseSchema, channelSchema,
   evidenceSourceSchema, findingSchema, inputLocaleSchema, listingSchema, localeSchema,
-  productSchema, revisionEventSchema, reviewDecisionSchema, businessRoleSchema,
+  productSchema, revisionEventSchema, reviewDecisionSchema, businessRoleSchema, platformSchema, numericClaimSchema, caseStatusSchema,
   ruleSchema, taskSchema,
 } from "./domain";
 
@@ -57,17 +57,51 @@ export const createCaseRequestSchema = z.strictObject({
   sku: z.string().trim().min(1).max(100), channel: channelSchema,
   feedbackText: z.string().trim().min(1).max(10000), feedbackLocale: localeSchema,
   merchantInstruction: z.string().trim().min(1).max(4000), merchantLocale: inputLocaleSchema,
-  synthetic: z.literal(true),
+  synthetic: z.literal(true).optional(),
 });
 
 export const caseIdResponseSchema = responseSchema(z.object({ caseId: z.uuid() }));
-export const caseListResponseSchema = responseSchema(z.object({ cases: z.array(caseSchema) }));
+export const caseListQuerySchema = z.object({
+  q: z.string().trim().max(200).default(""), status: caseStatusSchema.optional(), channel: platformSchema.optional(),
+  sort: z.enum(["newest", "oldest"]).default("newest"), page: z.coerce.number().int().min(1).max(100_000).default(1),
+});
+export const caseListResponseSchema = responseSchema(z.object({
+  cases: z.array(caseSchema), page: z.number().int().positive().optional(), pageSize: z.number().int().positive().optional(),
+  total: z.number().int().nonnegative().optional(),
+  counts: z.record(caseStatusSchema, z.number().int().nonnegative()).optional(),
+  intake: z.array(z.object({ date: z.iso.date(), count: z.number().int().nonnegative() })).optional(),
+}));
+
+const sourceText = z.string().trim().min(1).max(10_000);
+const sourceVersion = z.string().trim().min(1).max(100);
+const sourceUrl = z.url().refine((url) => url.startsWith("https://")).max(2048);
+
+export const createProductRequestSchema = z.strictObject({
+  sku: z.string().trim().min(1).max(100), name: z.string().trim().min(1).max(200),
+  sourceVersion,
+});
+export const productResponseSchema = responseSchema(productSchema);
+export const addSourceRequestSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.enum(["specification", "support_policy"]), content: sourceText,
+    provenance: z.string().trim().min(1).max(500), sourceVersion, numericClaim: numericClaimSchema.nullable().default(null) }),
+  z.strictObject({ kind: z.literal("listing"), platform: platformSchema, locale: localeSchema,
+    title: z.string().trim().min(1).max(500), content: sourceText, sourceVersion, numericClaim: numericClaimSchema.nullable().default(null) }),
+  z.strictObject({ kind: z.literal("rule"), platform: platformSchema, category: z.enum(["market_law", "platform_rule"]),
+    sourceUrl, excerpt: sourceText, applicability: z.string().trim().min(1).max(2000), checkedDate: z.iso.date() }),
+]);
+export const sourceResponseSchema = responseSchema(z.object({ sourceId: z.string().min(1) }));
+export const manageCaseRequestSchema = z.discriminatedUnion("action", [
+  z.strictObject({ action: z.literal("status"), status: caseStatusSchema, expectedStatus: caseStatusSchema,
+    note: z.string().trim().min(1).max(2000) }),
+  z.strictObject({ action: z.literal("reviewer"), reviewerUserId: z.uuid().nullable() }),
+]);
 
 export const caseBundleSchema = z.object({
   case: caseSchema, product: productSchema, evidence: z.array(evidenceSourceSchema),
   listings: z.array(listingSchema), rules: z.array(ruleSchema), artifacts: z.array(artifactSchema),
   versions: z.array(artifactVersionSchema), findings: z.array(findingSchema),
   revisions: z.array(revisionEventSchema), tasks: z.array(taskSchema), audit: z.array(auditEventSchema),
+  access: z.object({ role: z.enum(["owner", "reviewer"]), reviewerUserId: z.uuid().nullable() }).optional(),
 }).superRefine((bundle, ctx) => {
   validateArtifactContext(bundle.artifacts, bundle.versions, bundle.case.id, ctx);
   if (bundle.case.productId !== bundle.product.id || bundle.case.sku !== bundle.product.sku
@@ -91,7 +125,7 @@ export const generationResponseSchema = responseSchema(generationDataSchema);
 
 export const reviseArtifactRequestSchema = z.strictObject({
   promptText: z.string().trim().min(1).max(4000), promptLocale: inputLocaleSchema,
-  expectedVersion: z.number().int().positive(),
+  expectedVersion: z.number().int().positive(), outputLocale: z.literal("de-DE").optional(),
 });
 export const revisionResponseSchema = responseSchema(z.object({
   caseId: z.uuid(), artifact: artifactSchema, version: artifactVersionSchema,
@@ -104,7 +138,7 @@ export const reviewArtifactRequestSchema = z.strictObject({
   ruleChecks: z.array(z.strictObject({
     ruleId: z.string().min(1).max(200),
     sourceUrl: z.url().refine((url) => url.startsWith("https://")),
-  })).min(1).max(20).optional(),
+  })).min(1).optional(),
 });
 export const reviewResponseSchema = responseSchema(z.object({
   caseId: z.uuid(), artifactId: z.uuid(), version: artifactVersionSchema, auditEvent: auditEventSchema,

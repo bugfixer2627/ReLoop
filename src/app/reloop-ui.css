@@ -4,6 +4,14 @@
 .reloop-ui { --forest:#051C12; --forest-2:#0B2C1D; --lime:#B4F105; --lime-soft:#F2FFD0; --canvas:#F4F6F5; --card:#FFFFFF; --ink:#0B130F; --muted:#6C7E75; --border:#E9EFEF; --red:#D94A45; --orange:#D97706; --green:#1F9D63; --blue:#2E75D0; --shadow:0 14px 40px rgba(12,35,24,.07); }
 .reloop-ui * { box-sizing:border-box; }
 .reloop-ui { scroll-behavior:smooth; }
+.reloop-ui .workflow-form { margin-block: 16px; }
+.reloop-ui .workflow-form > summary { cursor: pointer; font-weight: 650; }
+.reloop-ui .workflow-fields { display: grid; gap: 12px; max-width: 680px; margin-block-start: 14px; }
+.reloop-ui fieldset.workflow-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.reloop-ui .workflow-fields > label { display: grid; gap: 5px; min-width: 0; }
+.reloop-ui .workflow-fields > .btn { justify-self: start; }
+.reloop-ui .workflow-fields textarea { width: 100%; }
+.reloop-ui .account-id { overflow-wrap: anywhere; user-select: all; }
 .reloop-ui { margin:0; color:var(--ink); background:var(--canvas); font-family:'Inter','Microsoft YaHei','PingFang SC','Noto Sans CJK SC',Arial,sans-serif; -webkit-font-smoothing:antialiased; }
 .reloop-ui a { color:inherit; text-decoration:none; }
 .reloop-ui button, .reloop-ui input, .reloop-ui textarea, .reloop-ui select { font:inherit; }

@@ -32,7 +32,7 @@ export default function LoginPage() {
       if (!response.ok || !body.ok) {
         throw new Error(body.error?.message ?? 'Sign-in failed. Check your connection and try again.');
       }
-      setAccessToken('session');
+      setAccessToken('session', body.data?.userId);
       router.replace('/dashboard');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : (zh ? '无法登录，请检查连接后重试。' : 'Could not sign in. Check the connection and try again.'));

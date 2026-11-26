@@ -36,6 +36,6 @@ export function useCaseBundle(caseId: string) {
     bundle: bundle?.case.id === caseId ? bundle : null,
     loading: loading || settledCaseId !== caseId,
     error: error ? requestMessage(error, locale, 'case') : null,
-    retry: () => { setLoading(true); setError(null); setReload((value) => value + 1); },
+    retry: (keepContent = false) => { if (!keepContent) setLoading(true); setError(null); setReload((value) => value + 1); },
   };
 }

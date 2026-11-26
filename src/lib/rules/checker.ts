@@ -1,6 +1,7 @@
 import type { ArtifactContent, CaseBundle } from "@/lib/contracts";
 import type { WorkflowFinding } from "@/lib/db/workflows";
 import { compareListingEvidence } from "./evidence";
+import { applicableReviewRules } from "./review";
 
 export function checkListingEvidence(bundle: CaseBundle, listingId?: string): WorkflowFinding[] {
   const specification = bundle.evidence.find((source) => source.kind === "specification" && source.numericClaim);
@@ -44,9 +45,7 @@ export function checkListingEvidence(bundle: CaseBundle, listingId?: string): Wo
   }
 
   for (const listing of listings) {
-    for (const rule of bundle.rules.filter((candidate) => candidate.category !== "merchant_policy"
-      && candidate.market === listing.market && (candidate.platform === null || candidate.platform === listing.platform)
-      && (candidate.segment === "all" || candidate.segment === listing.segment))) {
+    for (const rule of applicableReviewRules(bundle.rules, listing, bundle.case.synthetic)) {
       findings.push({
         listing_id: listing.id,
         category: rule.category === "platform_rule" ? "platform_rule" : "market_law",
@@ -66,7 +65,7 @@ export function checkListingEvidence(bundle: CaseBundle, listingId?: string): Wo
 }
 
 export function checkGeneratedContent(bundle: CaseBundle, content: ArtifactContent, listingId?: string): WorkflowFinding[] {
-  const specification = bundle.evidence.find((source) => source.kind === "specification" && source.numericClaim);
+  const specification = bundle.evidence.find((source) => source.kind === "specification" && source.verificationStatus === "documented" && source.numericClaim);
   const policy = bundle.evidence.find((source) => source.kind === "support_policy");
   const text = JSON.stringify(content);
   const findings: WorkflowFinding[] = [];
@@ -75,20 +74,23 @@ export function checkGeneratedContent(bundle: CaseBundle, content: ArtifactConte
   const runtimes = [
     ...text.matchAll(/\b(?:up\s*to|up-to|maximum|max|lasts?(?:\s+for)?)\s*(\d+(?:\.\d+)?)\s*(?:hours?|h)\b/gi),
     ...text.matchAll(/(?:续航|运行时间|电池寿命|最长|长达|最多)\s*(?:可达|为|：|:)?\s*(\d+(?:\.\d+)?)\s*(?:个)?小时/g),
+    ...text.matchAll(/\b(?:bis\s+zu|maximal|höchstens|bis)\s*(\d+(?:[.,]\d+)?)\s*(?:stunden?|h)\b/gi),
   ];
   for (const runtime of runtimes) {
-    if (!specification?.numericClaim || Number(runtime[1]) <= specification.numericClaim.value) continue;
+    if (specification?.numericClaim && Number(runtime[1].replace(',', '.')) <= specification.numericClaim.value) continue;
+    const sourceId = specification?.id ?? listingId ?? bundle.evidence[0]?.id ?? bundle.listings[0]?.id;
+    if (!sourceId) continue;
     findings.push({
       listing_id: listingId ?? null,
       category: "evidence",
       severity: "warning",
       code: "UNSUPPORTED_RUNTIME_CLAIM",
       evidence_status: "needs_evidence",
-      source_ids: [specification.id],
+      source_ids: [sourceId],
       original_span: null,
       proposed_span: runtime[0],
-      explanation_zh: `生成内容包含${runtime[1]}小时运行时间，但现有规格仅记录${specification.numericClaim.value}小时；需要在相同测试条件下补充证据。`,
-      explanation_en: `The generated content claims ${runtime[1]} hours while the available specification records ${specification.numericClaim.value} hours; comparable evidence is required.`,
+      explanation_zh: `生成内容包含${runtime[1]}小时运行时间，需要在相同测试条件下补充证据。`,
+      explanation_en: `The generated content claims ${runtime[1]} hours. Add comparable evidence under the same test conditions.`,
     });
   }
 

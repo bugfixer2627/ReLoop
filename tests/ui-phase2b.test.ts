@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 vi.mock('@/components/reloop-ui/WorkspaceProviders', () => ({
-  useWorkspace: () => ({ accessToken: 'fixture-token', locale: state.locale, toggleLocale: vi.fn(), clearAccessToken: vi.fn() }),
+  useWorkspace: () => ({ accessToken: 'fixture-token', locale: state.locale, feedbackDraft: { current: null }, toggleLocale: vi.fn(), clearAccessToken: vi.fn() }),
 }));
 vi.mock('@/components/reloop-ui/useSelectedCase', () => ({ useSelectedCase: () => null, rememberCase: vi.fn() }));
 vi.mock('@/components/reloop-ui/useCaseBundle', () => ({ useCaseBundle: () => ({ bundle: demoBundle, loading: false, error: null, retry: vi.fn() }) }));

@@ -25,17 +25,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (artifactResult.error) throw new Error("DATABASE");
     if (!artifactResult.data) return apiFailure("NOT_FOUND", "Artifact not found.", 404);
     const ownerUserId = readAuthSession(request)?.userId;
-    const bundle = await getCaseBundle(db, artifactResult.data.case_id as string, ownerUserId);
+    const bundle = await getCaseBundle(db, artifactResult.data.case_id as string, ownerUserId, true);
     if (!bundle) return apiFailure("NOT_FOUND", "Case not found.", 404);
     const artifact = bundle.artifacts.find((item) => item.id === id);
     const version = bundle.versions.find((item) => item.artifactId === id && item.version === parsed.data.version);
     if (!artifact || !version) return apiFailure("NOT_FOUND", "Artifact version not found.", 404);
     if (artifact.latestVersion !== version.version) return apiFailure("CONFLICT", "Only the current artifact version can be reviewed.", 409);
     const { decision, reviewerRole, comment, ruleChecks } = parsed.data;
-    if (ruleChecks && (!ownerUserId || decision !== "approved" || artifact.kind !== "listing_correction" || artifact.platform !== "shopify_us" || !comment)) {
-      return apiFailure("INVALID_REQUEST", "Source checks require a signed-in Shopify US draft owner and a review rationale.", 400);
+    if (ruleChecks && (!ownerUserId || decision !== "approved" || artifact.kind !== "listing_correction" || !comment)) {
+      return apiFailure("INVALID_REQUEST", "Source checks require a signed-in listing reviewer and a review rationale.", 400);
     }
-    if (ruleChecks && checkGeneratedContent(bundle, version.content).some((finding) => finding.severity === "blocker" || finding.evidence_status === "needs_evidence")) {
+    if (ownerUserId && bundle.access?.role === "owner" && (!bundle.case.synthetic || bundle.access.reviewerUserId)) {
+      return apiFailure("REVIEW_BLOCKED", "The assigned reviewer must record the review decision.", 422);
+    }
+    if (ownerUserId && decision === "approved" && checkGeneratedContent(bundle, version.content).some((finding) => finding.severity === "blocker" || finding.evidence_status === "needs_evidence")) {
       return apiFailure("REVIEW_BLOCKED", "This version still has unresolved evidence checks.", 422);
     }
     const input = {
@@ -58,7 +61,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
       saved = await recordReview(db, { ...input, reviewerRole });
     }
-    const updated = await getCaseBundle(db, bundle.case.id, ownerUserId);
+    const updated = await getCaseBundle(db, bundle.case.id, ownerUserId, true);
     if (!updated) throw new Error("DATABASE");
     const updatedVersion = updated.versions.find((item) => item.id === saved.version_id);
     const auditEvent = updated.audit.find((item) => item.id === saved.audit_id);

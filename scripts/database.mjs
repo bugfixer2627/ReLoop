@@ -7,8 +7,14 @@ import { postgresConfig } from "./postgres-config.mjs";
 loadProjectEnv();
 
 const command = process.argv[2];
-if (!["apply", "seed", "reset"].includes(command)) {
-  console.error("Usage: node scripts/database.mjs apply|seed|reset [--confirm-demo-reset]");
+if (!["apply", "seed", "reset", "claim-case"].includes(command)) {
+  console.error("Usage: node scripts/database.mjs apply|seed|reset [--confirm-demo-reset] or claim-case <case-id> <account-id>");
+  process.exit(1);
+}
+const [caseId, accountId] = process.argv.slice(3);
+const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+if (command === "claim-case" && (!uuid.test(caseId ?? "") || !uuid.test(accountId ?? ""))) {
+  console.error("Pass a specific case UUID and an existing Supabase account UUID.");
   process.exit(1);
 }
 if (!process.env.DATABASE_URL) {
@@ -50,12 +56,28 @@ try {
       await client.query("insert into public.reloop_schema_migrations(name, sha256) values ($1, $2)", [name, digest]);
       console.log(`Applied ${name}`);
     }
+  } else if (command === "claim-case") {
+    const result = await client.query(`update public.cases c set owner_user_id = $2
+      where c.id = $1 and c.synthetic and c.owner_user_id is null
+        and exists (select 1 from auth.users u where u.id = $2) returning c.id`, [caseId, accountId]);
+    if (!result.rowCount) {
+      await client.query("rollback");
+      console.error("Could not claim this case. Check that it is an unowned synthetic case and the account exists.");
+      process.exitCode = 1;
+    } else {
+      await client.query(`insert into public.audit_events(case_id, actor_role, action, entity_id, payload_json)
+        values ($1, 'support', 'legacy_case_claimed', $1::text, jsonb_build_object('ownerUserId', $2::uuid))`, [caseId, accountId]);
+      await client.query("commit");
+      console.log("Case assigned to the specified account.");
+    }
   } else {
     if (command === "reset") await client.query(await readFile(new URL("../supabase/reset.sql", import.meta.url), "utf8"));
     await client.query(await readFile(new URL("../supabase/seed.sql", import.meta.url), "utf8"));
   }
-  await client.query("commit");
-  console.log(`Database ${command} completed. Synthetic merchant fixture only.`);
+  if (command !== "claim-case") {
+    await client.query("commit");
+    console.log(`Database ${command} completed. Synthetic merchant fixture only.`);
+  }
 } catch {
   // Provider/driver errors can contain connection URIs or SQL with data; do not print them.
   await client?.query("rollback").catch(() => {});

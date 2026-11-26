@@ -10,11 +10,12 @@
     "dev": "node scripts/dev.mjs",
     "dev:local-stt": "node scripts/dev-local-stt.mjs",
     "start:local-stt": "node scripts/dev-local-stt.mjs --production",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "node scripts/start.mjs",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:browser": "node scripts/test-browser-workflows.mjs --fixture",
     "test:watch": "vitest",
     "prompt:run": "node --env-file-if-exists=.env.local scripts/prompt-router.mjs",
     "prompt:test": "vitest run tests/prompt-router.test.ts",
@@ -24,6 +25,7 @@
     "db:apply": "node scripts/database.mjs apply",
     "db:seed": "node scripts/database.mjs seed",
     "db:reset": "node scripts/database.mjs reset --confirm-demo-reset",
+    "db:claim-case": "node scripts/database.mjs claim-case",
     "auth:create-demo-user": "node scripts/create-demo-user.mjs"
   },
   "dependencies": {

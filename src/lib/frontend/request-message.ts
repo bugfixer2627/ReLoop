@@ -6,7 +6,10 @@ export function requestMessage(reason: unknown, locale: string, context: 'case' 
   if (context === 'case' && ['NOT_FOUND', 'INVALID_REQUEST'].includes(code)) {
     return chinese ? '此案例不存在或已不可用。请选择其他已保存案例。' : 'This case does not exist or is no longer available. Choose another saved case.';
   }
-  if (code === 'UNKNOWN_SKU') return chinese ? '未找到该 SKU 对应的商品，请核对已登记的演示商品 SKU。' : 'No product matches this SKU. Check the registered demo product SKU.';
+  if (code === 'UNKNOWN_SKU') return chinese ? '未找到该 SKU 对应的商品。请核对 SKU 或先登记商品。' : 'No product matches this SKU. Check the SKU or register the product first.';
+  if (code === 'NEEDS_EVIDENCE') return chinese ? '请在案例的「规则与来源」中添加商品规格及所需的商品快照。' : 'Add a documented specification and any needed listing snapshots under Rules & sources.';
+  if (code === 'MODEL_TIMEOUT') return chinese ? 'AI 服务响应超时，请重试。' : 'The AI provider timed out. Try again.';
+  if (code === 'RATE_LIMITED') return chinese ? '请求过于频繁，请稍后重试。' : 'The service is temporarily rate limited. Wait and try again.';
   if (code === 'UNAUTHORIZED') return chinese ? '访问令牌未被接受，请重新登录工作区。' : 'The access token was not accepted. Sign in to the workspace again.';
   if (code === 'NOT_CONFIGURED') return chinese ? '服务尚未配置，请联系团队完成配置后重试。' : 'The service is not configured. Ask the team to configure it, then retry.';
   if (code === 'NOT_IMPLEMENTED') return chinese ? '此服务尚未接入，请使用现有的文字输入或已保存案例。' : 'This service is not implemented. Use text input or the saved case.';

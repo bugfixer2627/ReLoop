@@ -32,5 +32,5 @@ export async function POST(request: Request) {
   if (error || !data.user?.id || !data.session) {
     return apiFailure("UNAUTHORIZED", "Email or password was not accepted.", 401);
   }
-  return setAuthSessionCookie(apiSuccess({ authenticated: true }), request, data.user.id);
+  return setAuthSessionCookie(apiSuccess({ authenticated: true, userId: data.user.id }), request, data.user.id);
 }

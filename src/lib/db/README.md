@@ -8,11 +8,12 @@
 - `npm run db:seed` loads the synthetic fixture. Existing records with matching seed IDs are preserved.
 - `npm run db:reset` deletes synthetic case, artifact, task, and history records, then recreates the sample case. It preserves products, evidence, snapshots, and reviewed rules. Use it only with a dedicated demo database. The script refuses a reset when it finds non-synthetic products or cases.
 - `npm run db:generate-seed` regenerates `supabase/seed.sql` from the canonical `src/lib/fixtures/demo.json`. When evidence or snapshots change, assign new IDs and versions to preserve their history.
+- `npm run db:claim-case -- <case-id> <account-id>` assigns a specific unowned synthetic case to an existing Supabase account and records the transfer in its audit history. Use this only after confirming who should receive the case.
 
 ## Repository boundaries
 
 Repositories map snake_case database rows to camelCase DTOs and validate them against the shared contracts. Database tables use RLS, and the trusted server makes application queries with the service role. See [architecture](../../../docs/ARCHITECTURE.md) for the access boundary.
 
-Demo browser accounts each own their new cases. Cases created before ownership was introduced and cases created by the legacy integration token are unowned fixtures. Signed-in browser accounts start with their own cases and can create a synthetic case through Feedback.
+Browser accounts own their new cases and private products. A case owner can assign one independent reviewer, who can read that case and record version decisions. The owner manages sources and case status. Case list, search, and export enforce the same visibility rules. Legacy integration tokens continue to use unowned fixtures. Account migrations leave previously unowned cases available for explicit assignment.
 
 Artifact identity and artifact version are separate. Revision creation must lock/check the current version and atomically insert the next version, revision event, findings and audit event. Return `CONFLICT` for stale `expectedVersion`; do not increment the head if generation/validation fails. Reviews target a version, never the entire artifact. Check the same case for every related record.

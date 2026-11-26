@@ -130,11 +130,12 @@ export const findingSchema = z.object({
   }
 });
 
+export const caseStatusSchema = z.enum(["open", "pending_review", "clear"]);
 export const caseSchema = z.object({
   id: z.uuid(), productId: z.uuid(), sku: z.string().min(1), channel: channelSchema,
   feedbackText: z.string().min(1), feedbackLocale: localeSchema,
   merchantInstruction: z.string().min(1), merchantLocale: inputLocaleSchema,
-  status: z.enum(["open", "pending_review", "clear"]),
+  status: caseStatusSchema,
   synthetic: z.boolean(), createdAt: timestampSchema,
 });
 

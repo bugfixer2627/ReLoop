@@ -1,14 +1,18 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
+import type { CaseInput } from '@/lib/frontend/case-validation';
+import type { InputLocale } from '@/lib/contracts';
 
 export type UiLocale = 'en-US' | 'zh-CN';
 
 type WorkspaceContextValue = {
   accessToken: string | null;
+  userId: string | null;
   authReady: boolean;
-  setAccessToken: (token: string) => void;
+  setAccessToken: (token: string, userId?: string) => void;
   clearAccessToken: () => void;
+  feedbackDraft: RefObject<{ fields: Omit<CaseInput, 'feedbackLocale'> & { feedbackLocale: InputLocale }; saved: { id: string; input: CaseInput } | null } | null>;
   locale: UiLocale;
   toggleLocale: () => void;
   compact: boolean;
@@ -42,7 +46,9 @@ function savePreferences(value: { locale: UiLocale; compact: boolean }) {
 
 export function WorkspaceProviders({ children }: { children: ReactNode }) {
   const [accessToken, setToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const feedbackDraft = useRef<WorkspaceContextValue['feedbackDraft']['current']>(null);
   const rawPreferences = useSyncExternalStore(subscribePreferences, preferenceSnapshot, () => '');
   const { locale, compact } = useMemo(() => readPreferences(rawPreferences), [rawPreferences]);
   useEffect(() => { document.documentElement.lang = locale; }, [locale]);
@@ -50,21 +56,26 @@ export function WorkspaceProviders({ children }: { children: ReactNode }) {
     let active = true;
     fetch('/api/auth/session', { cache: 'no-store', credentials: 'same-origin' })
       .then((response) => response.json())
-      .then((body) => { if (active && body?.ok) setToken(body.data.authenticated ? 'session' : null); })
+      .then((body) => { if (active && body?.ok) {
+        setToken(body.data.authenticated ? 'session' : null);
+        setUserId(body.data.authenticated ? body.data.userId ?? null : null);
+      } })
       .catch(() => { if (active) setToken(null); })
       .finally(() => { if (active) setAuthReady(true); });
     return () => { active = false; };
   }, []);
   const value = useMemo(() => ({
     accessToken,
+    userId,
     authReady,
-    setAccessToken: (token: string) => setToken(token ? 'session' : null),
-    clearAccessToken: () => setToken(null),
+    setAccessToken: (token: string, id?: string) => { feedbackDraft.current = null; setToken(token ? 'session' : null); setUserId(id ?? null); },
+    clearAccessToken: () => { feedbackDraft.current = null; setToken(null); setUserId(null); },
+    feedbackDraft,
     locale,
     toggleLocale: () => savePreferences({ locale: locale === 'en-US' ? 'zh-CN' : 'en-US', compact }),
     compact,
     toggleCompact: () => savePreferences({ locale, compact: !compact }),
-  }), [accessToken, authReady, locale, compact]);
+  }), [accessToken, userId, authReady, locale, compact]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

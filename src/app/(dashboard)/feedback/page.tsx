@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/reloop-ui/icons';
 import { PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShell';
@@ -9,7 +9,7 @@ import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
 import { rememberCase } from '@/components/reloop-ui/useSelectedCase';
 import { VoiceInput } from '@/components/reloop-ui/VoiceInput';
 import { InboxContext } from '@/components/reloop-ui/InboxContext';
-import { ApiRequestError, analyzeCase, createCase, translateText } from '@/lib/frontend/api-client';
+import { ApiRequestError, analyzeCase, createCase, registerProduct, translateText } from '@/lib/frontend/api-client';
 import { requestMessage } from '@/lib/frontend/request-message';
 import { caseFieldIsInvalid, updateInvalidFields, type CaseInput, type CaseInputField } from '@/lib/frontend/case-validation';
 import { demoBundle } from '@/lib/fixtures/demo';
@@ -20,20 +20,28 @@ const fieldIds: Record<string, string> = { sku: 'sku', channel: 'channel', feedb
 
 export default function FeedbackPage() {
   const router = useRouter();
-  const { accessToken, locale } = useWorkspace();
-  const [merchantInstruction, setMerchantInstruction] = useState('');
-  const [merchantLocale, setMerchantLocale] = useState<InputLocale>('en-US');
-  const [sku, setSku] = useState('');
-  const [platform, setPlatform] = useState<Platform>('shopify_us');
-  const [feedbackLocale, setFeedbackLocale] = useState<InputLocale>('en-US');
-  const [customerFeedback, setCustomerFeedback] = useState('');
+  const { accessToken, locale, feedbackDraft } = useWorkspace();
+  const [merchantInstruction, setMerchantInstruction] = useState(() => feedbackDraft.current?.fields.merchantInstruction ?? '');
+  const [merchantLocale, setMerchantLocale] = useState<InputLocale>(() => feedbackDraft.current?.fields.merchantLocale ?? 'en-US');
+  const [sku, setSku] = useState(() => feedbackDraft.current?.fields.sku ?? '');
+  const [platform, setPlatform] = useState<Platform>(() => feedbackDraft.current?.fields.channel ?? 'shopify_us');
+  const [feedbackLocale, setFeedbackLocale] = useState<InputLocale>(() => feedbackDraft.current?.fields.feedbackLocale ?? 'en-US');
+  const [customerFeedback, setCustomerFeedback] = useState(() => feedbackDraft.current?.fields.feedbackText ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<{ reason: unknown; stage: 'save' | 'analysis' } | null>(null);
   const [validatedFields, setInvalidFields] = useState<CaseInputField[]>([]);
-  const [saved, setSaved] = useState<{ id: string; input: CaseInput } | null>(null);
+  const [saved, setSaved] = useState(() => feedbackDraft.current?.saved ?? null);
   const [analysisUnavailable, setAnalysisUnavailable] = useState(false);
   const [translationBusy, setTranslationBusy] = useState<'feedback' | 'instruction' | null>(null);
   const [translations, setTranslations] = useState<Partial<Record<'feedback' | 'instruction', { source: string; sourceLocale: InputLocale; text?: string; error?: unknown }>>>({});
+  const [productBusy, setProductBusy] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
+  const [productNotice, setProductNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (accessToken) feedbackDraft.current = { fields: { sku, channel: platform, feedbackText: customerFeedback, feedbackLocale,
+      merchantInstruction, merchantLocale }, saved };
+  }, [accessToken, feedbackDraft, sku, platform, customerFeedback, feedbackLocale, merchantInstruction, merchantLocale, saved]);
 
   async function translate(field: 'feedback' | 'instruction') {
     if (!accessToken || translationBusy) return;
@@ -72,7 +80,7 @@ export default function FeedbackPage() {
   }
   const text = locale === 'zh-CN' ? {
     title: '反馈收件箱', description: '将客户反馈与商家指令保存为可追溯的案例。',
-    product: '商品与平台', sku: '商品 SKU', platform: '反馈来源平台', skuHint: '输入已登记的演示商品 SKU，与案例 ID 不同。',
+    product: '商品与平台', sku: '商品 SKU', platform: '反馈来源平台', skuHint: '输入已登记的商品 SKU，或先登记商品。',
     skuPlaceholder: '例如 RL-LAMP-01…', platformHint: '固定支持的平台范围，不代表已连接卖家账户。',
     outputHint: '目标输出语言由平台工作流决定，与原始反馈及指令语言分别处理。',
     complaint: '客户反馈原文', feedbackLanguage: '客户反馈语言', complaintHint: '保留客户原话；切换界面语言不会翻译或替换输入。', complaintPlaceholder: '粘贴合成客户反馈原文…',
@@ -82,31 +90,60 @@ export default function FeedbackPage() {
     retry: '重试证据核对', retrying: '正在核对…', openCase: '打开原始案例', savedSku: '已保存 SKU',
     retained: '输入未变时只重试核对，继续使用同一案例。', changed: '当前表单已更改。再次保存会新建案例，不会修改原始反馈或商品关联。',
     unavailable: '案例已保存。分析服务当前不可用，未生成分析结果。',
-    synthetic: '仅输入合成演示数据，请勿填写真实客户个人信息。',
+    synthetic: '提交前删除客户姓名、地址、订单号及其他个人信息。分析会将案例内容发送给配置的 AI 服务。',
     actionHint: '先保存原始反馈，再核对证据并生成 AI 调查摘要。未解决的证据或规则问题仍需人工审核。',
     skuError: '请填写有效 SKU（1–100 字符）。', complaintError: '请填写客户反馈（1–10,000 字符）。', instructionError: '请填写商家指令（1–4,000 字符）。', languageError: '请选择有效语言或平台。',
   } : {
     title: 'Feedback inbox', description: 'Save the customer message and merchant instruction as a traceable case.',
-    product: 'Product & marketplace', sku: 'Product SKU', platform: 'Feedback marketplace', skuHint: 'Use a registered demo product SKU. It is different from the case ID.',
+    product: 'Product & marketplace', sku: 'Product SKU', platform: 'Feedback marketplace', skuHint: 'Enter a registered SKU or register the product below.',
     skuPlaceholder: 'For example, RL-LAMP-01…', platformHint: 'Fixed supported platforms; these are not connected seller accounts.',
     outputHint: 'Target output language follows the marketplace workflow, separately from source feedback and instruction languages.',
-    complaint: 'Customer complaint', feedbackLanguage: 'Customer feedback language', complaintHint: 'Keep the original message. Switching interface language never translates or replaces it.', complaintPlaceholder: 'Paste the synthetic customer message…',
+    complaint: 'Customer complaint', feedbackLanguage: 'Customer feedback language', complaintHint: 'Keep the original wording and remove personal details.', complaintPlaceholder: 'Paste the customer message…',
     instruction: 'Merchant instruction', merchantLanguage: 'Instruction & voice language', instructionHint: 'Describe what to check. Instruction language is independent of interface language.', instructionPlaceholder: 'Enter the evidence check request or confirm a voice transcript…',
     english: 'English', chinese: 'Simplified Chinese', voice: 'Voice input (optional)',
     useExample: 'Load synthetic example', submit: 'Save and analyze', saving: 'Saving…', saved: 'Case saved',
     retry: 'Retry evidence check', retrying: 'Checking evidence…', openCase: 'Open original case', savedSku: 'Saved SKU',
     retained: 'Unchanged input retries the evidence check using the same case.', changed: 'This form has changed. Saving again creates a new case; the original feedback and product association stay unchanged.',
     unavailable: 'The case was saved. Analysis is currently unavailable; no result was generated.',
-    synthetic: 'Synthetic demo data only. Do not enter real customer personal information.',
+    synthetic: 'Remove names, addresses, order numbers, and other personal details before saving. Analysis sends case content to the configured AI provider.',
     actionHint: 'Save the original feedback, check the evidence, and generate an AI investigation summary. Unresolved evidence or rule checks still need human review.',
     skuError: 'Enter a valid SKU (1–100 characters).', complaintError: 'Enter the customer message (1–10,000 characters).', instructionError: 'Enter a merchant instruction (1–4,000 characters).', languageError: 'Choose a valid language or marketplace.',
   };
   const currentInput = createCaseRequestSchema.safeParse({
     sku, channel: platform, feedbackText: customerFeedback, feedbackLocale,
-    merchantInstruction, merchantLocale, synthetic: true,
+    merchantInstruction, merchantLocale,
   });
   const canRetrySavedCase = !!saved && currentInput.success && JSON.stringify(saved.input) === JSON.stringify(currentInput.data);
   const invalidFields = currentInput.success ? [] : validatedFields.filter((field) => currentInput.error.issues.some((issue) => issue.path[0] === field));
+  const dirty = !canRetrySavedCase && !!(sku.trim() || customerFeedback.trim() || merchantInstruction.trim());
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const zh = locale === 'zh-CN';
+  async function saveProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!accessToken || productBusy) return;
+    setProductBusy(true); setProductError(null); setProductNotice(null);
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    try {
+      const product = await registerProduct(accessToken, {
+        name: String(fields.get('name')), sku: String(fields.get('sku')), sourceVersion: String(fields.get('sourceVersion')),
+      });
+      setSku(product.sku);
+      form.reset();
+      setProductNotice(zh ? '商品已登记。保存案例后可补充商品资料。' : 'Product registered. Save a case to add its sources.');
+    } catch (reason) {
+      setProductError(reason instanceof ApiRequestError && reason.code === 'CONFLICT'
+        ? (zh ? '该 SKU 已登记，或为演示保留。' : 'This SKU is already registered or reserved for the demo.')
+        : (zh ? '未能登记商品，请核对字段后重试。' : 'Could not register the product. Check the fields and try again.'));
+    }
+    finally { setProductBusy(false); }
+  }
 
   function updateField(field: CaseInputField, value: string, update: (value: string) => void) {
     update(value);
@@ -114,7 +151,7 @@ export default function FeedbackPage() {
 
     const input: CaseInput = {
       sku, channel: platform, feedbackText: customerFeedback, feedbackLocale,
-      merchantInstruction, merchantLocale, synthetic: true, [field]: value,
+      merchantInstruction, merchantLocale, [field]: value,
     };
     const remainsInvalid = caseFieldIsInvalid(input, field, value);
     setInvalidFields((fields) => updateInvalidFields(fields, field, remainsInvalid));
@@ -127,6 +164,7 @@ export default function FeedbackPage() {
   }
 
   function loadExample() {
+    if (dirty && !window.confirm(zh ? '用示例替换当前未保存的表单？' : 'Replace the unsaved form with the example?')) return;
     setSku(demoBundle.case.sku);
     setPlatform(demoBundle.case.channel);
     setFeedbackLocale(inputLocaleSchema.parse(demoBundle.case.feedbackLocale));
@@ -142,6 +180,7 @@ export default function FeedbackPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!accessToken || saving) return;
+    const saveForSources = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'sources';
     setError(null);
     if (!currentInput.success) {
       const fields = currentInput.error.issues.map((issue) => issue.path[0]).filter((field): field is CaseInputField => field === 'sku' || field === 'feedbackText' || field === 'merchantInstruction');
@@ -157,6 +196,10 @@ export default function FeedbackPage() {
       const caseId = saved && canRetrySavedCase ? saved.id : (await createCase(accessToken, input)).caseId;
       setSaved({ id: caseId, input });
       rememberCase(caseId);
+      if (saveForSources) {
+        router.push(`/rules?caseId=${caseId}`);
+        return;
+      }
       try {
         await analyzeCase(accessToken, caseId);
         router.push(`/cases/${caseId}`);
@@ -173,8 +216,19 @@ export default function FeedbackPage() {
   return (
     <WorkspaceShell title={text.title}>
       <div className="page feedback-page">
-        <PageHeading title={text.title} description={text.description} actions={<button className="btn btn-soft btn-sm" type="button" disabled={saving} onClick={loadExample}><Icon name="file" size={14}/>{text.useExample}</button>}/>
+        <PageHeading title={text.title} description={text.description} actions={<button className="btn btn-soft btn-sm" type="button" disabled={saving || productBusy} onClick={loadExample}><Icon name="file" size={14}/>{text.useExample}</button>}/>
         <p className="api-notice synthetic-only" role="note">{text.synthetic}</p>
+        <details className="card card-pad workflow-form">
+          <summary>{zh ? '登记商品' : 'Register a product'}</summary>
+          <form onSubmit={saveProduct} className="workflow-fields">
+            <label>{zh ? '商品 SKU' : 'Product SKU'}<input className="input" name="sku" required maxLength={100} autoComplete="off" spellCheck={false}/></label>
+            <label>{zh ? '商品名称' : 'Product name'}<input className="input" name="name" required maxLength={200} autoComplete="off"/></label>
+            <label>{zh ? '商品版本' : 'Product version'}<input className="input" name="sourceVersion" required maxLength={100} autoComplete="off"/></label>
+            <button className="btn btn-soft btn-sm" type="submit" disabled={productBusy || saving}>{productBusy ? (zh ? '正在保存…' : 'Saving…') : (zh ? '保存商品' : 'Save product')}</button>
+          </form>
+          {productError && <p className="api-error" role="alert">{productError}</p>}
+          {productNotice && <p role="status">{productNotice}</p>}
+        </details>
         <div className="inbox-layout"><form className="card card-pad feedback-form" noValidate onSubmit={submit}>
           <fieldset className="feedback-section feedback-product" disabled={saving}>
             <legend>{text.product}</legend>
@@ -201,8 +255,11 @@ export default function FeedbackPage() {
           </div>
           <div className="feedback-actions">
             {error && <div className="api-error" role="alert">{requestMessage(error.reason, locale, error.stage)}</div>}
-            {saved && <div className="api-notice saved-submission" role="status"><strong>{text.saved}</strong><p>{text.savedSku}: <span translate="no">{saved.input.sku}</span></p>{analysisUnavailable && <p>{text.unavailable}</p>}<p>{canRetrySavedCase ? text.retained : text.changed}</p><Link href={`/cases/${saved.id}`} className="card-link case-back-link">{text.openCase}<Icon name="arrow" size={13}/></Link></div>}
-            <div className="feedback-submit-row"><p className="feedback-helper">{text.actionHint}</p><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? (canRetrySavedCase ? text.retrying : text.saving) : canRetrySavedCase ? text.retry : text.submit}<Icon name="arrow" size={14}/></button></div>
+            {saved && <div className="api-notice saved-submission" role="status"><strong>{text.saved}</strong><p>{text.savedSku}: <span translate="no">{saved.input.sku}</span></p>{analysisUnavailable && <p>{text.unavailable}</p>}<p>{canRetrySavedCase ? text.retained : text.changed}</p><div className="workflow-links"><Link href={`/cases/${saved.id}`} className="card-link case-back-link">{text.openCase}<Icon name="arrow" size={13}/></Link><Link href={`/rules?caseId=${saved.id}`} className="card-link">{zh ? '添加证据与快照' : 'Add evidence and snapshots'}</Link></div></div>}
+            <div className="feedback-submit-row"><p className="feedback-helper">{text.actionHint}</p><div className="workflow-links">
+              <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? (canRetrySavedCase ? text.retrying : text.saving) : canRetrySavedCase ? text.retry : text.submit}<Icon name="arrow" size={14}/></button>
+              <button className="btn btn-soft" type="submit" value="sources" disabled={saving}>{zh ? '保存并添加来源' : 'Save and add sources'}</button>
+            </div></div>
           </div>
         </form><InboxContext hasSku={!!sku.trim()} hasFeedback={!!customerFeedback.trim()} hasInstruction={!!merchantInstruction.trim()}/></div>
       </div>

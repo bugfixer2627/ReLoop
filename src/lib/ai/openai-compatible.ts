@@ -239,23 +239,30 @@ export function createOpenAICompatibleAdapters(config: OpenAICompatibleConfig): 
     },
     async generateListing(context, platform): Promise<ArtifactContent> {
       const format = platformFormat[platform];
+      const german = platform === "amazon_de" && !context.case.synthetic;
+      const amazonInstruction = german
+        ? "Write German customer-facing product copy for Amazon DE, with internalBrief:false. Keep the documented numbers, conditions and uncertainty."
+        : "Use an English internal reviewer brief with internalBrief:true.";
       return completeJson([
-        { role: "system", content: `${systemInstruction("en-US")} Draft only the ${platform} listing structure with format ${format}. Return ONE flat JSON object with exactly this shape: ${contentShape[format]}. Do not wrap it in a platform key or include drafts for other platforms. Do not claim the draft is approved or publishable. ${platform === "amazon_de" ? "Use an English internal reviewer brief with internalBrief:true; German generation is not verified." : platform === "alibaba_intl" ? "Use English B2B wholesale fields and only documented MOQ/lead-time values; use null if missing." : "Write an English consumer-facing description and FAQ; keep internal investigation notes out of the product copy."}` },
+        { role: "system", content: `${systemInstruction("en-US")} Draft only the ${platform} listing structure with format ${format}. Return ONE flat JSON object with exactly this shape: ${contentShape[format]}. Do not wrap it in a platform key or include drafts for other platforms. Do not claim the draft is approved or publishable. ${platform === "amazon_de" ? amazonInstruction : platform === "alibaba_intl" ? "Use English B2B wholesale fields and only documented MOQ/lead-time values; use null if missing." : "Write an English consumer-facing description and FAQ; keep internal investigation notes out of the product copy."}` },
         { role: "user", content: JSON.stringify(contextForPrompt(context)) },
       ], artifactContentSchema).then((content) => {
-        if (content.format !== format || (platform === "amazon_de" && content.format === "amazon_listing" && !content.internalBrief)) {
+        if (content.format !== format || (content.format === "amazon_listing" && content.internalBrief === german)) {
           throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
         }
         return content;
       });
     },
-    async revise(context, current: ArtifactVersion, prompt, locale): Promise<ArtifactContent> {
+    async revise(context, current: ArtifactVersion, prompt, locale, outputLocale = current.locale): Promise<ArtifactContent> {
       const expectedFormat = current.content.format;
+      const outputInstruction = outputLocale === "de-DE"
+        ? "Write customer-facing German copy with internalBrief:false. Preserve verified numbers, conditions and uncertainty."
+        : "Keep the artifact's original output language even when the revision instruction is Chinese.";
       return completeJson([
-        { role: "system", content: `${systemInstruction(locale)} Revise only the supplied current artifact in response to the merchant's revision request. Return one flat JSON object with exactly this shape: ${contentShape[expectedFormat]}. Keep the artifact's original output language even when the revision instruction is Chinese. Do not invent unsupported facts.` },
+        { role: "system", content: `${systemInstruction(locale)} Revise only the supplied current artifact in response to the merchant's revision request. Return one flat JSON object with exactly this shape: ${contentShape[expectedFormat]}. ${outputInstruction} Do not invent unsupported facts.` },
         { role: "user", content: JSON.stringify({ context: contextForPrompt(context), current: current.content, revisionRequest: prompt }) },
       ], artifactContentSchema).then((content) => {
-        if (content.format !== expectedFormat || (content.format === "amazon_listing" && !content.internalBrief && current.locale === "en-US")) {
+        if (content.format !== expectedFormat || (content.format === "amazon_listing" && content.internalBrief !== (outputLocale === "en-US"))) {
           throw new ProviderError("INVALID_MODEL_OUTPUT", 502, false);
         }
         return content;

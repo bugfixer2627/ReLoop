@@ -10,7 +10,10 @@ vi.mock("server-only", () => ({}));
 const state = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/db/client", () => ({ getDatabaseClient: () => state.client }));
 import { GET as list, POST as create } from "@/app/api/cases/route";
-import { GET as load } from "@/app/api/cases/[id]/route";
+import { GET as load, PATCH as manage } from "@/app/api/cases/[id]/route";
+import { GET as exportCases } from "@/app/api/cases/export/route";
+import { POST as product } from "@/app/api/products/route";
+import { POST as source } from "@/app/api/cases/[id]/sources/route";
 import { POST as analyze } from "@/app/api/cases/[id]/analyze/route";
 import { POST as support } from "@/app/api/cases/[id]/support/route";
 import { POST as repair } from "@/app/api/cases/[id]/repair/route";
@@ -25,12 +28,12 @@ let reset: string;
 let failure = "";
 const token = "integration-test-token-".padEnd(40, "x");
 type Handler = (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response>;
-async function call(handler: Handler, id: string, body?: unknown, userId?: string) {
+async function call(handler: Handler, id: string, body?: unknown, userId?: string, method = body === undefined ? "GET" : "POST") {
   const headers = new Headers({ origin: "http://localhost", "content-type": "application/json" });
   if (userId) headers.set("cookie", `${AUTH_SESSION_COOKIE}=${createAuthSession(userId)}`);
   else headers.set("authorization", `Bearer ${token}`);
   return handler(new Request(`http://localhost/api/test/${id}`, {
-    method: body === undefined ? "GET" : "POST",
+    method,
     headers,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }), { params: Promise.resolve({ id }) });
@@ -77,12 +80,17 @@ beforeEach(async () => {
     else if (instruction.includes("Revise only")) {
       const current = JSON.parse(prompt.messages[1].content).current;
       const revisedText = failure === "unsafe" ? "We will provide a guaranteed refund; up to 12 hours." : "Please share operating conditions. No defect has been established.";
-      content = current.format === "support_reply" ? { ...current, body: revisedText } : { ...current, description: revisedText };
+      content = current.format === "amazon_listing" && instruction.includes("customer-facing German")
+        ? { ...current, internalBrief: false, title: "Schreibtischlampe", description: "Eine Lampe für den Schreibtisch.", bullets: ["Wiederaufladbar"] }
+        : current.format === "support_reply" ? { ...current, body: revisedText } : { ...current, description: revisedText };
     } else if (instruction.includes("investigation_summary")) content = { format: "investigation_summary", summary: "规格记录四小时；客户观察尚未验证。", unknowns: ["客户测试条件"] };
     else if (instruction.includes("Draft only")) {
       const platform = instruction.includes("amazon_de") ? "amazon_de" : instruction.includes("alibaba_intl") ? "alibaba_intl" : "shopify_us";
       const artifact = mockGeneratedBundle.artifacts.find((item) => item.platform === platform && item.kind === "listing_correction")!;
-      content = mockGeneratedBundle.versions.find((item) => item.artifactId === artifact.id)!.content;
+      const draft = mockGeneratedBundle.versions.find((item) => item.artifactId === artifact.id)!.content;
+      content = draft.format === "amazon_listing" && instruction.includes("internalBrief:false")
+        ? { ...draft, internalBrief: false, title: "Schreibtischlampe", description: "Eine Lampe mit dokumentierten Eigenschaften.", bullets: ["Für den Schreibtisch"] }
+        : draft;
     } else content = mockGeneratedBundle.versions[0].content;
     return Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] });
   }));
@@ -227,6 +235,139 @@ describe("real local SQL + actual API handlers + MOCK provider HTTP", () => {
     expect(saved.artifacts).toHaveLength(1);
     expect(saved.versions).toHaveLength(1);
     expect(saved.audit.filter((item) => item.action === "artifact_generated")).toHaveLength(1);
+  });
+});
+
+describe("merchant pilot workflows", () => {
+  const owner = "20000000-0000-4000-8000-000000000001";
+  const reviewer = "20000000-0000-4000-8000-000000000002";
+  const stranger = "20000000-0000-4000-8000-000000000003";
+
+  it("preserves an existing internal Amazon brief when creating a German version", async () => {
+    const created = await newCase("en-US", "RL-LAMP-01", reviewer);
+    const caseId = created.body.data.caseId as string;
+    expect((await call(repair, caseId, {}, reviewer)).status).toBe(200);
+    const initial = await bundle(caseId, reviewer);
+    const amazon = initial.artifacts.find((item) => item.platform === "amazon_de")!;
+    const premature = await call(review, amazon.id, { version: 1, decision: "approved", reviewerRole: "compliance", comment: "Draft check" }, reviewer);
+    expect(premature.status).toBe(422);
+    const result = await call(revise, amazon.id, { expectedVersion: 1, promptText: "Localize to German", promptLocale: "en-US", outputLocale: "de-DE" }, reviewer);
+    expect(result.status).toBe(200);
+    const updated = await bundle(caseId, reviewer);
+    const versions = updated.versions.filter((item) => item.artifactId === amazon.id);
+    expect(versions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ version: 1, locale: "en-US", content: expect.objectContaining({ internalBrief: true }) }),
+      expect.objectContaining({ version: 2, locale: "de-DE", reviewStatus: "draft", content: expect.objectContaining({ internalBrief: false }) }),
+    ]));
+  });
+
+  it("onboards a private catalog, recovers from missing sources, and closes an independently reviewed case", async () => {
+    const input = { sku: "PILOT-LAMP-01", name: "Pilot desk lamp", sourceVersion: "v1" };
+    expect((await call(product, "new", input, owner)).status).toBe(201);
+    expect((await call(product, "new", input, owner)).status).toBe(409);
+    expect((await newCase("en-US", input.sku, stranger)).response.status).toBe(404);
+    expect((await call(product, "new", input, stranger)).status).toBe(201);
+    const created = await newCase("en-US", input.sku, owner);
+    expect(created.response.status).toBe(201);
+    const caseId = created.body.data.caseId as string;
+    expect((await bundle(caseId, owner)).case.synthetic).toBe(false);
+    expect((await call(analyze, caseId, {}, owner)).status).toBe(422);
+
+    const specification = { kind: "specification", content: "Documented four-hour maximum under reference conditions.",
+      provenance: "Test report PILOT-01", sourceVersion: "v1", numericClaim: demoBundle.evidence[0].numericClaim };
+    expect((await call(source, caseId, specification, stranger)).status).toBe(404);
+    expect((await call(source, caseId, specification, owner)).status).toBe(201);
+    expect((await call(source, caseId, { kind: "support_policy", content: "Request operating details; make no compensation promise.",
+      provenance: "Merchant support manual", sourceVersion: "v1" }, owner)).status).toBe(201);
+    expect((await call(analyze, caseId, {}, owner)).status).toBe(200);
+    expect((await call(repair, caseId, {}, owner)).status).toBe(422);
+
+    for (const platform of ["shopify_us", "amazon_de", "alibaba_intl"]) {
+      expect((await call(source, caseId, { kind: "listing", platform, title: "Desk lamp", content: "Rechargeable desk lamp.",
+        locale: platform === "amazon_de" ? "de-DE" : "en-US", sourceVersion: "v1" }, owner)).status).toBe(201);
+      for (const category of ["market_law", "platform_rule"]) {
+        expect((await call(source, caseId, { kind: "rule", platform, category,
+          sourceUrl: "https://example.test/" + platform + "/" + category, excerpt: "Synthetic test excerpt.",
+          applicability: "Synthetic rule coverage for the applicable platform.", checkedDate: "2025-01-01" }, owner)).status).toBe(201);
+      }
+    }
+    expect((await call(support, caseId, {}, owner)).status).toBe(200);
+    expect((await call(repair, caseId, {}, owner)).status).toBe(200);
+    const initial = await bundle(caseId, owner);
+    const german = initial.versions.find((version) => version.content.format === "amazon_listing");
+    expect(german).toMatchObject({ locale: "de-DE", content: { internalBrief: false } });
+    const shopify = initial.artifacts.find((artifact) => artifact.kind === "listing_correction" && artifact.platform === "shopify_us")!;
+    expect((await call(review, shopify.id, { version: 1, decision: "approved", reviewerRole: "compliance", comment: "Owner approval" }, owner)).status).toBe(422);
+    expect((await call(load, caseId, undefined, reviewer)).status).toBe(404);
+
+    const sdk = state.client as ReturnType<typeof sqlClient>;
+    vi.spyOn(sdk.auth.admin, "getUserById").mockResolvedValue({
+      data: { user: { id: reviewer, app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "2025-01-01T00:00:00Z" } }, error: null,
+    });
+    const assign = { action: "reviewer", reviewerUserId: reviewer };
+    expect((await call(manage, caseId, assign, stranger, "PATCH")).status).toBe(404);
+    expect((await call(manage, caseId, assign, owner, "PATCH")).status).toBe(200);
+    expect((await bundle(caseId, reviewer)).access?.role).toBe("reviewer");
+    expect((await call(list, "list?page=1", undefined, reviewer)).status).toBe(200);
+    expect((await call(source, caseId, specification, reviewer)).status).toBe(404);
+    expect((await call(support, caseId, {}, reviewer)).status).toBe(404);
+
+    for (const artifact of initial.artifacts.filter((item) => item.kind !== "investigation_summary")) {
+      const approval = { version: 1, decision: "approved", reviewerRole: "compliance", comment: "Independently checked against the stored sources." };
+      const ruleChecks = artifact.kind === "listing_correction" ? initial.rules
+        .filter((rule) => rule.platform === artifact.platform && rule.status === "verified")
+        .map((rule) => ({ ruleId: rule.id, sourceUrl: rule.sourceUrl })) : undefined;
+      if (ruleChecks) {
+        expect((await call(review, artifact.id, { ...approval, ruleChecks: ruleChecks.slice(0, 1) }, reviewer)).status).toBe(422);
+      }
+      const response = await call(review, artifact.id, { ...approval, ruleChecks }, reviewer);
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect((await response.json()).data).toMatchObject({ version: { reviewStatus: "approved" },
+        auditEvent: { payload: { reviewerUserId: reviewer, sources: expect.any(Array) } } });
+    }
+
+    const followUp = { assignedRole: "qa", kind: "qa_investigation", title: "Check test conditions",
+      description: "Verify the operating conditions.", state: "open", sourceIds: [initial.evidence[0].id] };
+    const taskResponse = await call(task, caseId, followUp, owner);
+    expect(taskResponse.status).toBe(200);
+    const taskId = (await taskResponse.json()).data.task.id as string;
+    const resolve = { action: "status", status: "clear", expectedStatus: "open", note: "Customer follow-up completed." };
+    expect((await call(manage, caseId, resolve, reviewer, "PATCH")).status).toBe(404);
+    expect((await call(manage, caseId, resolve, owner, "PATCH")).status).toBe(422);
+    expect((await call(task, caseId, { ...followUp, taskId, state: "done" }, owner)).status).toBe(200);
+    expect((await call(manage, caseId, resolve, owner, "PATCH")).status).toBe(200);
+    expect((await bundle(caseId, owner)).case.status).toBe("clear");
+    expect((await call(manage, caseId, { ...resolve, status: "pending_review" }, owner, "PATCH")).status).toBe(409);
+    expect((await call(task, caseId, { ...followUp, taskId, state: "open" }, owner)).status).toBe(200);
+    expect((await bundle(caseId, owner)).case.status).toBe("open");
+    expect((await call(task, caseId, { ...followUp, taskId, state: "done" }, owner)).status).toBe(200);
+    expect((await call(manage, caseId, resolve, owner, "PATCH")).status).toBe(200);
+    expect((await call(manage, caseId, { ...assign, reviewerUserId: null }, owner, "PATCH")).status).toBe(200);
+    expect((await call(load, caseId, undefined, reviewer)).status).toBe(404);
+  });
+
+  it("finds older matches, pages results, and exports all matching cases scoped to the account", async () => {
+    await db.query(`insert into public.cases(product_id, channel, feedback_text, feedback_locale, merchant_instruction,
+      merchant_locale, owner_user_id, created_at)
+      select $1, 'shopify_us', 'Paging fixture ' || n, 'en-US', 'Test', 'en-US', $2,
+        now() - make_interval(hours => n)
+      from generate_series(1, 251) n`, [demoBundle.product.id, owner]);
+    await db.query(`insert into public.cases(product_id, channel, feedback_text, feedback_locale, merchant_instruction,
+      merchant_locale, owner_user_id) values ($1, 'shopify_us', 'Paging fixture from other account', 'en-US', 'Test', 'en-US', $2)`,
+    [demoBundle.product.id, stranger]);
+    const response = await call(list, "list?page=2&q=Paging+fixture", undefined, owner);
+    expect(response.status, await response.clone().text()).toBe(200);
+    const page = (await response.json()).data;
+    expect(page).toMatchObject({ total: 251, page: 2, pageSize: 25, counts: { open: 251, clear: 1 } });
+    expect(page.cases[0].feedbackText).toBe("Paging fixture 26");
+    const older = await call(list, "list?page=1&q=Paging+fixture+251", undefined, owner);
+    expect((await older.json()).data.cases[0].feedbackText).toBe("Paging fixture 251");
+    const download = await call(exportCases, "export?q=Paging+fixture", undefined, owner);
+    expect(download.status).toBe(200);
+    const csv = await download.text();
+    expect(csv.split("\r\n")).toHaveLength(252);
+    expect(csv).toContain("Paging fixture 251");
+    expect(csv).not.toContain("other account");
   });
 });
 

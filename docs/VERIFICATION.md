@@ -2,6 +2,8 @@
 
 `npm run check` runs lint, TypeScript, the default Vitest suite, and the production build. The default tests cover route behavior, contracts, and embedded PostgreSQL without requiring hosted credentials. Live suites are opt-in.
 
+After `npm run build`, run `npx playwright install chromium` and `npm run test:browser` for the CI browser suite. It uses Next.js, Chromium, embedded PostgreSQL, a loopback AI fixture, and a signed test session. It covers browser navigation during feedback entry, partial generation and retry, multi-version review, tasks, and reload. `node scripts/test-browser-workflows.mjs` runs the configured AI provider with the same isolated SQL boundary.
+
 With the app running, `npm run smoke` checks basic page responses, access protection, health, and speech request handling. `GET /api/health` probes database reachability and reports whether model and speech adapters are configured.
 
 ## Recorded results

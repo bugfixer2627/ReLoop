@@ -27,7 +27,8 @@ describe("shared team contracts", () => {
     expect(createCaseRequestSchema.safeParse({ ...request, merchantInstruction: "  " }).success).toBe(false);
     expect(createCaseRequestSchema.safeParse({ ...request, approved: true }).success).toBe(false);
   });
-  it("requires synthetic inputs for this demo-only MVP", () => {
+  it("accepts the legacy synthetic marker but leaves classification to the saved product", () => {
+    expect(createCaseRequestSchema.safeParse({ ...request, synthetic: undefined }).success).toBe(true);
     expect(createCaseRequestSchema.safeParse({ ...request, synthetic: false }).success).toBe(false);
   });
   it("accepts the current case statuses and rejects removed statuses", () => {

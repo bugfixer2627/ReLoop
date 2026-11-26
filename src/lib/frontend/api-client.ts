@@ -7,6 +7,7 @@ import {
   reviewResponseSchema, taskResponseSchema, transcriptionResponseSchema,
   upsertTaskRequestSchema, MAX_AUDIO_BYTES, AUDIO_MIME_TYPES,
   translationRequestSchema, translationResponseSchema,
+  addSourceRequestSchema, createProductRequestSchema, manageCaseRequestSchema, productResponseSchema, sourceResponseSchema,
 } from '@/lib/contracts';
 import type {
   CaseBundle, InputLocale, Platform,
@@ -64,6 +65,25 @@ export async function listCases(token: string) {
   return result.cases;
 }
 
+export async function loadCasePage(token: string, query: string) {
+  return request<ResponseData<typeof caseListResponseSchema>>(`/api/cases?${query}`, token, caseListResponseSchema);
+}
+
+export async function registerProduct(token: string, input: z.input<typeof createProductRequestSchema>) {
+  const body = createProductRequestSchema.parse(input);
+  return request<ResponseData<typeof productResponseSchema>>('/api/products', token, productResponseSchema, { method: 'POST', body: jsonBody(body) });
+}
+
+export async function addCaseSource(token: string, caseId: string, input: z.input<typeof addSourceRequestSchema>) {
+  const body = addSourceRequestSchema.parse(input);
+  return request<ResponseData<typeof sourceResponseSchema>>(`/api/cases/${encodeURIComponent(caseId)}/sources`, token, sourceResponseSchema, { method: 'POST', body: jsonBody(body) });
+}
+
+export async function manageCase(token: string, caseId: string, input: z.input<typeof manageCaseRequestSchema>) {
+  const body = manageCaseRequestSchema.parse(input);
+  return request<ResponseData<typeof caseIdResponseSchema>>(`/api/cases/${encodeURIComponent(caseId)}`, token, caseIdResponseSchema, { method: 'PATCH', body: jsonBody(body) });
+}
+
 export async function createCase(token: string, input: z.input<typeof createCaseRequestSchema>) {
   const valid = createCaseRequestSchema.parse(input);
   return request<ResponseData<typeof caseIdResponseSchema>>('/api/cases', token, caseIdResponseSchema, { method: 'POST', body: jsonBody(valid) });
@@ -89,7 +109,7 @@ export async function repairListings(token: string, caseId: string) {
 }
 
 export async function reviseArtifact(token: string, artifactId: string, input: {
-  promptText: string; promptLocale: InputLocale; expectedVersion: number;
+  promptText: string; promptLocale: InputLocale; expectedVersion: number; outputLocale?: 'de-DE';
 }) {
   const body = reviseArtifactRequestSchema.parse(input);
   return request<ResponseData<typeof revisionResponseSchema>>(`/api/artifacts/${encodeURIComponent(artifactId)}/revise`, token, revisionResponseSchema, { method: 'POST', body: jsonBody(body) });

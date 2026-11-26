@@ -17,9 +17,10 @@ ReLoop connects a customer complaint to a saved case. Merchants can compare what
 
 | Step | In the workspace |
 | --- | --- |
-| **Capture** | In Feedback, enter a SKU, paste the customer's message, and add a merchant instruction. Use the synthetic example to try the workflow. |
-| **Investigate** | Review the saved complaint, AI summary, source evidence, listing snapshots, and outstanding checks. |
-| **Fix & Approve** | Generate support and listing drafts, revise each independently, and review the exact saved version. Unresolved evidence or rule checks block approval. |
+| **Capture** | Register a private product or load the synthetic example. Save the SKU, redacted customer message, and merchant instruction in Feedback. |
+| **Investigate** | Add specifications, support policies, listing snapshots, and checked rule excerpts in Rules & Sources. Run the investigation after supplying missing evidence. |
+| **Fix & Approve** | Generate and revise drafts, assign a reviewer by account ID, and sign off on each saved version against its sources. |
+| **Resolve** | Finish outstanding follow-up tasks and record a resolution note. Search and export matching cases from Case Management. |
 
 Approved drafts stay in ReLoop for human handoff. The app does not send customer replies or publish listings to marketplaces.
 
@@ -63,6 +64,12 @@ For an existing demo database, run `npm run db:apply` before starting this versi
 2. In **Fix & Approve**, generate corrections and select **Shopify US**. Open the listed rule sources and compare them with the saved draft.
 3. Confirm the source check, enter your rationale, and submit the approval. ReLoop records your account, source links, and decision for that version. Revising the draft opens a new review.
 
+### Use the private product workflow
+
+1. Register a SKU in **Feedback** and save the case. Open **Rules & Sources** to add the product specification, support policy, and a snapshot for each platform you want to correct. Redact customer identifiers before submitting text to the configured AI provider.
+2. Add a checked market-law source and platform-rule source for each listing you plan to approve. Record the relevant excerpt, applicability, and checked date. Amazon DE drafts use German copy for private products. Existing English briefs can be revised into German from **Fix & Approve**.
+3. Have the reviewer share their account ID from **Settings**. Assign them in **Manage case**. Their case list will include the assignment, and they can review drafts while the owner manages the case and sources.
+
 <details>
 <summary>Local network and startup options</summary>
 
@@ -76,9 +83,11 @@ For an existing demo database, run `npm run db:apply` before starting this versi
 
 ```sh
 npm run check
+npx playwright install chromium
+npm run test:browser
 ```
 
-This is the CI sequence for lint, TypeScript, tests, and the production build. With the app running, `npm run smoke` checks basic HTTP behavior. See [verification](docs/VERIFICATION.md) for the scope of automated checks and the recorded hosted, browser, and speech results.
+CI runs these checks against a local fixture database and AI endpoint. With the app running, `npm run smoke` checks basic HTTP behavior. See [verification](docs/VERIFICATION.md) for hosted, browser, and speech test coverage.
 
 ## Project map
 

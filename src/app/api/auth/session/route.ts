@@ -4,5 +4,6 @@ import { readAuthSession } from "@/lib/server/access";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  return apiSuccess({ authenticated: readAuthSession(request) !== null });
+  const session = readAuthSession(request);
+  return apiSuccess({ authenticated: session !== null, userId: session?.userId ?? null });
 }

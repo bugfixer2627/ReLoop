@@ -3,11 +3,12 @@ import { getCaseBundle } from "@/lib/db/cases";
 import { createArtifactVersion } from "@/lib/db/workflows";
 import type { CaseBundle, Platform } from "@/lib/contracts";
 import { checkGeneratedContent, checkListingEvidence } from "@/lib/rules/checker";
+import { applicableReviewRules } from "@/lib/rules/review";
 import { getAiAdapter, ProviderError } from "@/lib/ai/openai-compatible";
 
 const platforms: Platform[] = ["shopify_us", "amazon_de", "alibaba_intl"];
 
-function sourceIds(bundle: CaseBundle) {
+export function sourceIds(bundle: CaseBundle) {
   return [...new Set([
     ...bundle.evidence.map((source) => source.id),
     ...bundle.listings.map((listing) => listing.id),
@@ -31,7 +32,8 @@ async function reload(db: SupabaseClient, caseId: string, ownerUserId?: string) 
 }
 
 function requireEvidence(bundle: CaseBundle) {
-  if (!bundle.evidence.some((source) => source.kind === "specification" && source.verificationStatus === "documented" && source.numericClaim && Object.keys(source.numericClaim.conditions).length > 0)) {
+  if (!bundle.evidence.some((source) => source.kind === "specification" && source.verificationStatus === "documented"
+    && (!bundle.case.synthetic || (source.numericClaim && Object.keys(source.numericClaim.conditions).length > 0)))) {
     throw new Error("NEEDS_EVIDENCE");
   }
 }
@@ -86,15 +88,20 @@ export async function generateSupport(db: SupabaseClient, bundle: CaseBundle, ow
 }
 
 export async function generateRepair(db: SupabaseClient, bundle: CaseBundle, ownerUserId?: string) {
-  if (platforms.every((platform) => bundle.artifacts.some((artifact) => artifact.kind === "listing_correction" && artifact.platform === platform))) return bundle;
+  const pending = platforms.filter((platform) => !bundle.artifacts.some((artifact) => artifact.kind === "listing_correction" && artifact.platform === platform));
+  const available = pending.flatMap((platform) => {
+    const listing = bundle.listings.find((item) => item.platform === platform);
+    return listing ? [listing] : [];
+  });
+  if (!pending.length) return bundle;
+  if (!available.length) throw new Error("NEEDS_EVIDENCE");
   requireEvidence(bundle);
   const adapter = getAiAdapter();
   if (!adapter) throw new ProviderError("NOT_CONFIGURED", 503, false);
-  for (const platform of platforms) {
-    if (bundle.artifacts.some((artifact) => artifact.kind === "listing_correction" && artifact.platform === platform)) continue;
-    const content = await adapter.generateListing(bundle, platform);
-    const listing = bundle.listings.find((item) => item.platform === platform);
-    if (!listing) throw new Error("Listing snapshot is missing");
+  for (const listing of available) {
+    const platform = listing.platform;
+    const draftContext = { ...bundle, listings: [listing], rules: applicableReviewRules(bundle.rules, listing, bundle.case.synthetic) };
+    const content = await adapter.generateListing(draftContext, platform);
     const findings = [...checkListingEvidence(bundle, listing.id), ...checkGeneratedContent(bundle, content, listing.id)];
     await createArtifactVersion(db, {
       caseId: bundle.case.id,
@@ -102,10 +109,10 @@ export async function generateRepair(db: SupabaseClient, bundle: CaseBundle, own
       platform,
       market: listing.market,
       segment: listing.segment,
-      locale: "en-US",
+      locale: content.format === "amazon_listing" && !content.internalBrief ? "de-DE" : "en-US",
       languageStatus: "beta",
       content,
-      sourceIds: [listing.id, ...bundle.evidence.map((source) => source.id), ...bundle.rules.map((rule) => rule.id)],
+      sourceIds: sourceIds(draftContext),
       validationStatus: validationStatus(bundle, findings),
       findings,
     });

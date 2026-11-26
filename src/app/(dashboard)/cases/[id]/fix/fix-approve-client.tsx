@@ -12,6 +12,8 @@ import type { Platform } from '@/lib/contracts';
 import { platformSchema } from '@/lib/contracts';
 import { Icon } from '@/components/reloop-ui/icons';
 import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
+import { CaseManagementActions } from '@/components/reloop-ui/CaseManagementActions';
+import { requestMessage } from '@/lib/frontend/request-message';
 
 export default function FixApproveClient({ caseId }: { caseId: string }) {
   const { bundle, loading, error, retry } = useCaseBundle(caseId);
@@ -23,14 +25,14 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
   const text = locale === 'zh-CN' ? {
     title: '修订与审核', description: '客服回复与平台 Listing 使用同一案例上下文。', loading: '正在读取已保存版本…', retry: '重试',
     missing: '未找到案例，或当前访问令牌无权读取该案例。', support: '客服回复', listings: '平台商品修订',
-    generateSupport: '生成客服回复', generateListings: '生成三平台修订', unavailable: '接口尚未实现。没有模拟草稿或审核结果。',
+    generateSupport: '生成客服回复', generateListings: '生成三平台修订',
     noSupport: '尚无已保存的客服回复草稿。', noListing: '当前平台尚无已保存修订。',
     tasks: '质量与合规任务', audit: '审核与审计记录', noTasks: '尚无已保存任务。', noAudit: '尚无已保存的审核或审计记录。',
     prompt: '本页只显示持久化版本。', channel: '平台', notPublished: '审核草稿不会自动发布到外部平台。', qaTask: '创建 QA 跟进', complianceTask: '创建合规审核',
   } : {
     title: 'Fix & approve', description: 'Support and marketplace drafts share the same case context.', loading: 'Loading saved versions…', retry: 'Retry',
     missing: 'Case not found, or this access token cannot read the case.', support: 'Customer support reply', listings: 'Platform listing corrections',
-    generateSupport: 'Generate support reply', generateListings: 'Generate three listing corrections', unavailable: 'Endpoint is not implemented. No simulated draft or review state is shown.',
+    generateSupport: 'Generate support reply', generateListings: 'Generate three listing corrections',
     noSupport: 'No saved support reply draft yet.', noListing: 'No saved correction for this platform yet.',
     tasks: 'QA and compliance tasks', audit: 'Review and audit history', noTasks: 'No persisted tasks yet.', noAudit: 'No persisted review or audit events yet.',
     prompt: 'Only persisted versions appear in this workspace.', channel: 'Platform', notPublished: 'Draft approval does not publish to an external platform.', qaTask: 'Create QA follow-up', complianceTask: 'Create compliance review',
@@ -41,23 +43,31 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
   const listingArtifact = bundle?.artifacts.find((artifact) => artifact.kind === 'listing_correction' && artifact.platform === platform);
   const versions = bundle?.versions ?? [];
   const findings = bundle?.findings ?? [];
+  const canEdit = bundle?.access?.role !== 'reviewer';
+  const canReview = bundle?.access?.role === 'reviewer' || (!!bundle?.case.synthetic && !bundle.access?.reviewerUserId);
+  const pendingListings = platformSchema.options.filter((id) => bundle?.listings.some((item) => item.platform === id)
+    && !bundle.artifacts.some((item) => item.kind === 'listing_correction' && item.platform === id));
+  const zh = locale === 'zh-CN';
+  const hasListingDraft = bundle?.artifacts.some((item) => item.kind === 'listing_correction');
+  const generateListingsLabel = pendingListings.length === 3 ? text.generateListings : hasListingDraft
+    ? (zh ? '生成其余修订' : 'Generate remaining corrections') : (zh ? '生成商品修订' : 'Generate listing corrections');
+  const refresh = () => retry(true);
 
   async function createDraft(kind: 'support' | 'repair') {
-    if (!accessToken || busy) return;
+    if (!accessToken || busy || !canEdit) return;
     setBusy(kind); setActionError(null);
     try {
       if (kind === 'support') await generateSupport(accessToken, caseId);
       else await repairListings(accessToken, caseId);
-      retry();
     } catch (reason) {
-      setActionError(isUnavailable(reason)
-        ? text.unavailable
-        : reason instanceof ApiRequestError ? reason.message : 'The request failed. No draft was saved.');
-    } finally { setBusy(null); }
+      const message = reason instanceof ApiRequestError ? requestMessage(reason, locale, 'analysis')
+        : (zh ? '未能完成草稿生成。' : 'Draft generation could not finish.');
+      setActionError(kind === 'repair' ? `${message} ${zh ? '下方会刷新已保存的草稿。可重试生成其余草稿。' : 'Saved drafts will refresh below. Retry to generate the remaining drafts.'}` : message);
+    } finally { refresh(); setBusy(null); }
   }
 
   async function createFollowUp(kind: 'qa' | 'compliance') {
-    if (!accessToken || !bundle || taskBusy) return;
+    if (!accessToken || !bundle || taskBusy || !canEdit) return;
     const sourceIds = kind === 'qa'
       ? (bundle.evidence.length ? bundle.evidence.map((source) => source.id) : bundle.listings.map((source) => source.id))
       : bundle.rules.map((rule) => rule.id);
@@ -73,7 +83,7 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
         description: kind === 'qa' ? 'Confirm the customer operating conditions. Customer testimony is unverified and is not a defect finding.' : 'Capture current official rule text, checked date and platform/market applicability before recording a compliance decision.',
         state: 'open', sourceIds,
       });
-      retry();
+      refresh();
     } catch (reason) {
       setActionError(isUnavailable(reason)
         ? (locale === 'zh-CN' ? '任务接口尚未实现。没有创建任务。' : 'Task endpoint is not implemented. No task was created.')
@@ -82,12 +92,12 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
   }
 
   async function changeTask(task: NonNullable<typeof bundle>['tasks'][number]) {
-    if (!accessToken || taskBusy) return;
+    if (!accessToken || taskBusy || !canEdit) return;
     setTaskBusy(task.id); setActionError(null);
     try {
       await saveTask(accessToken, caseId, { taskId: task.id, assignedRole: task.assignedRole, kind: task.kind, title: task.title,
         description: task.description, state: task.state === 'done' ? 'open' : 'done', sourceIds: task.sourceIds });
-      retry();
+      refresh();
     } catch (reason) { setActionError(reason instanceof ApiRequestError ? reason.message : (locale === 'zh-CN' ? '未能保存任务状态。' : 'Could not save task state.')); }
     finally { setTaskBusy(null); }
   }
@@ -100,22 +110,30 @@ export default function FixApproveClient({ caseId }: { caseId: string }) {
         {!loading && !error && bundle && <>
           <PageHeading eyebrow={`${bundle.case.id.slice(0, 8).toUpperCase()} · ${bundle.case.sku}`} title={text.title} description={`${text.channel}: ${casePlatformLabel(bundle.case.channel)} · ${bundle.product.name}`} actions={<CaseStatusBadge status={bundle.case.status} locale={locale}/>}/>
           <p className="muted fix-intro">{text.prompt} {text.notPublished}</p>
+          <CaseManagementActions bundle={bundle} onSaved={refresh}/>
+          {canEdit && !canReview && <p className="api-notice">{zh ? '独立审核人可提交审核决定。' : 'The assigned reviewer records the review decision.'}</p>}
           <section className="card card-pad fix-case-context"><div><span className="compare-label">{locale === 'zh-CN' ? '当前案例的客户原话（未核实）' : 'Customer statement for this case (unverified)'}</span><p className="transcript">{bundle.case.feedbackText}</p></div><div><span className="compare-label">{locale === 'zh-CN' ? '商家指令' : 'Merchant instruction'}</span><p className="compare-text">{bundle.case.merchantInstruction}</p><Link className="card-link" href={`/cases/${caseId}/detail`}>{locale === 'zh-CN' ? '案例详情与证据' : 'Case details & evidence'}</Link></div></section>
           {actionError && <div className="api-error" role="alert">{actionError}</div>}
           <section className="card card-pad artifact-section">
             <div className="card-title-row"><h2 className="card-title">{text.support}</h2><span className="badge badge-neutral">{locale === 'zh-CN' ? '当前案例' : 'Current case'} · {bundle.case.id.slice(0,8)}</span></div>
-            {supportArtifact ? <ArtifactWorkspace key={supportArtifact.id} artifact={supportArtifact} customerContext={{ feedbackText: bundle.case.feedbackText, feedbackLocale: bundle.case.feedbackLocale, policies: bundle.evidence.filter((e) => e.kind === 'support_policy') }} versions={versions.filter((version) => version.artifactId === supportArtifact.id)} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/> : <div className="empty-state"><strong>{text.noSupport}</strong><button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('support')}>{busy === 'support' ? '…' : text.generateSupport}<Icon name="sparkle" size={13}/></button></div>}
+            {supportArtifact ? <ArtifactWorkspace key={supportArtifact.id} artifact={supportArtifact} customerContext={{ feedbackText: bundle.case.feedbackText, feedbackLocale: bundle.case.feedbackLocale, policies: bundle.evidence.filter((e) => e.kind === 'support_policy') }} versions={versions.filter((version) => version.artifactId === supportArtifact.id)} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={refresh} synthetic={bundle.case.synthetic} canEdit={canEdit} canReview={canReview}/> : <div className="empty-state"><strong>{text.noSupport}</strong>{canEdit && <button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('support')}>{busy === 'support' ? (zh ? '正在生成…' : 'Generating…') : text.generateSupport}<Icon name="sparkle" size={13}/></button>}</div>}
           </section>
           <section className="card card-pad artifact-section">
-            <div className="card-title-row"><h2 className="card-title">{text.listings}</h2><span className="badge badge-neutral">{bundle.listings.length} {locale === 'zh-CN' ? '个平台快照' : 'platform snapshots'}</span></div>
-            <div className="toolbar platform-toolbar" role="group" aria-label={text.listings}>
-              {Object.entries(platformDefinitions).map(([id, definition]) => <button key={id} className={`tab ${platform === id ? 'active' : ''}`} type="button" aria-pressed={platform === id} onClick={() => { setPlatform(platformSchema.parse(id)); setActionError(null); }}>{definition.label}</button>)}
+            <div className="card-title-row"><h2 className="card-title">{text.listings}</h2>
+              {canEdit && pendingListings.length > 0 && <button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('repair')}>
+                {busy === 'repair' ? (zh ? '正在生成…' : 'Generating…') : generateListingsLabel}<Icon name="sparkle" size={13}/>
+              </button>}
             </div>
-            {listingArtifact && <ArtifactWorkspace key={listingArtifact.id} artifact={listingArtifact} versions={versions.filter((version) => version.artifactId === listingArtifact.id)} listing={listing} rules={bundle.rules} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={retry}/>}
-            {!listingArtifact && <div className="empty-state"><strong>{text.noListing}</strong><button className="btn btn-primary btn-sm" type="button" disabled={busy !== null} onClick={() => createDraft('repair')}>{busy === 'repair' ? '…' : text.generateListings}<Icon name="sparkle" size={13}/></button>{listing && <small>{listing.id} · {listing.snapshotVersion} · {platformDefinitions[platform].segment.toUpperCase()}</small>}</div>}
+            <div className="toolbar platform-toolbar" role="group" aria-label={text.listings}>
+              {Object.entries(platformDefinitions).map(([id, definition]) => <button key={id} className={`tab ${platform === id ? 'active' : ''}`} type="button" aria-pressed={platform === id} onClick={() => setPlatform(platformSchema.parse(id))}>{zh ? definition.labelZh : definition.label}</button>)}
+            </div>
+            {listingArtifact && <ArtifactWorkspace key={listingArtifact.id} artifact={listingArtifact} versions={versions.filter((version) => version.artifactId === listingArtifact.id)} listing={listing} snapshots={bundle.listings.filter((item) => item.platform === platform)} rules={bundle.rules} findings={findings} revisions={bundle.revisions} accessToken={accessToken!} onRefresh={refresh} synthetic={bundle.case.synthetic} canEdit={canEdit} canReview={canReview}/>}
+            {!listingArtifact && <div className="empty-state"><strong>{text.noListing}</strong>
+              {listing ? <small>{listing.id} · {listing.snapshotVersion}</small> : canEdit && <Link href={`/rules?caseId=${caseId}`} className="card-link">{zh ? '添加商品快照' : 'Add a listing snapshot'}</Link>}
+            </div>}
           </section>
           <div className="dashboard-grid fix-history-grid">
-            <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.tasks}</span><span className="case-count">{bundle.tasks.length}</span></div><div className="task-actions"><button className="btn btn-soft btn-sm" type="button" disabled={taskBusy !== null} onClick={() => createFollowUp('qa')}>{taskBusy === 'qa' ? '…' : text.qaTask}</button><button className="btn btn-soft btn-sm" type="button" disabled={taskBusy !== null} onClick={() => createFollowUp('compliance')}>{taskBusy === 'compliance' ? '…' : text.complianceTask}</button></div>{bundle.tasks.length === 0 ? <p className="muted">{text.noTasks}</p> : <div className="timeline">{bundle.tasks.map((task) => <article className="timeline-item" key={task.id}><span className={`timeline-dot ${task.state === 'done' ? 'done' : ''}`}/><div><h4>{task.title}</h4><p>{task.assignedRole} · {task.state}</p><small>{task.description}</small><button type="button" className="btn btn-soft btn-sm task-state-action" disabled={taskBusy !== null} onClick={() => changeTask(task)}>{taskBusy === task.id ? "…" : task.state === "done" ? (locale === "zh-CN" ? "重新打开" : "Reopen") : (locale === "zh-CN" ? "标记完成" : "Mark done")}</button></div></article>)}</div>}</section>
+            <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.tasks}</span><span className="case-count">{bundle.tasks.length}</span></div>{canEdit && <div className="task-actions"><button className="btn btn-soft btn-sm" type="button" disabled={taskBusy !== null} onClick={() => createFollowUp('qa')}>{taskBusy === 'qa' ? '…' : text.qaTask}</button><button className="btn btn-soft btn-sm" type="button" disabled={taskBusy !== null} onClick={() => createFollowUp('compliance')}>{taskBusy === 'compliance' ? '…' : text.complianceTask}</button></div>}{bundle.tasks.length === 0 ? <p className="muted">{text.noTasks}</p> : <div className="timeline">{bundle.tasks.map((task) => <article className="timeline-item" key={task.id}><span className={`timeline-dot ${task.state === 'done' ? 'done' : ''}`}/><div><h4>{task.title}</h4><p>{task.assignedRole} · {task.state}</p><small>{task.description}</small>{canEdit && <button type="button" className="btn btn-soft btn-sm task-state-action" disabled={taskBusy !== null} onClick={() => changeTask(task)}>{taskBusy === task.id ? "…" : task.state === "done" ? (locale === "zh-CN" ? "重新打开" : "Reopen") : (locale === "zh-CN" ? "标记完成" : "Mark done")}</button>}</div></article>)}</div>}</section>
             <section className="card card-pad"><div className="card-title-row"><span className="card-title">{text.audit}</span><span className="case-count">{bundle.audit.length}</span></div>{bundle.audit.length === 0 ? <p className="muted">{text.noAudit}</p> : <div className="timeline">{bundle.audit.map((event) => <article className="timeline-item" key={event.id}><span className="timeline-dot done"/><div><h4>{event.action}</h4><p>{event.actorRole} · {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.createdAt))}</p></div></article>)}</div>}</section>
           </div>
           <Link className="card-link case-back-link" href={`/cases/${caseId}`}><span aria-hidden="true">←</span>{locale === 'zh-CN' ? '返回案例核验' : 'Back to claim investigation'}</Link>

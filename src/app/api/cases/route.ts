@@ -1,6 +1,6 @@
-import { createCaseRequestSchema } from "@/lib/contracts";
+import { caseListQuerySchema, createCaseRequestSchema } from "@/lib/contracts";
 import { getDatabaseClient } from "@/lib/db/client";
-import { createCase, listCases } from "@/lib/db/cases";
+import { createCase, listCases, pageCases } from "@/lib/db/cases";
 import { checkAccess, readAuthSession } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
@@ -11,7 +11,14 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const db = getDatabaseClient();
   if (!db) return apiFailure("NOT_CONFIGURED", "Database is not configured.", 503);
-  try { return apiSuccess({ cases: await listCases(db, readAuthSession(request)?.userId) }); }
+  const actorId = readAuthSession(request)?.userId ?? null;
+  const params = new URL(request.url).searchParams;
+  const parsed = caseListQuerySchema.safeParse(Object.fromEntries(params));
+  if (!parsed.success) return apiFailure("INVALID_REQUEST", "Invalid case filters.", 400);
+  try {
+    if (!actorId && !params.size) return apiSuccess({ cases: await listCases(db) });
+    return apiSuccess(await pageCases(db, actorId, parsed.data));
+  }
   catch { return apiFailure("DATABASE_UNAVAILABLE", "Could not load cases.", 503, true); }
 }
 

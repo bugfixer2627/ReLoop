@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { CaseStatusBadge, PageHeading, WorkspaceShell } from '@/components/reloop-ui/WorkspaceShell';
 import { useCaseBundle } from '@/components/reloop-ui/useCaseBundle';
 import { useWorkspace } from '@/components/reloop-ui/WorkspaceProviders';
-import { casePlatformLabel } from '@/lib/frontend/api-client';
+import { analyzeCase, casePlatformLabel } from '@/lib/frontend/api-client';
+import { requestMessage } from '@/lib/frontend/request-message';
 import { platformDefinitions } from '@/lib/config/platforms';
 import { findingCategorySchema, type ArtifactContent } from '@/lib/contracts';
 import type { z } from 'zod';
 import { Icon } from '@/components/reloop-ui/icons';
 import { CaseLoadProblem } from '@/components/reloop-ui/CaseLoadProblem';
 import { SavedCaseIdentity } from '@/components/reloop-ui/SavedCaseIdentity';
+import { CaseManagementActions } from '@/components/reloop-ui/CaseManagementActions';
 
 function fieldText(value: unknown) {
   if (typeof value === 'string') return value;
@@ -34,7 +37,9 @@ function artifactSummary(content: ArtifactContent) {
 
 export default function InvestigationClient({ caseId }: { caseId: string }) {
   const { bundle, loading, error, retry } = useCaseBundle(caseId);
-  const { locale } = useWorkspace();
+  const { locale, accessToken } = useWorkspace();
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const text = locale === 'zh-CN' ? {
     title: '承诺核验', loading: '正在读取案例与证据…', retry: '重试',
     missing: '未找到案例，或当前访问令牌无权读取该案例。',
@@ -56,6 +61,14 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
     .filter((version) => version.artifactId === summaryArtifact.id)
     .sort((left, right) => right.version - left.version)[0];
 
+  async function runAnalysis() {
+    if (!accessToken || analyzing) return;
+    setAnalyzing(true); setAnalysisError(null);
+    try { await analyzeCase(accessToken, caseId); }
+    catch (reason) { setAnalysisError(requestMessage(reason, locale, 'analysis')); }
+    finally { retry(true); setAnalyzing(false); }
+  }
+
   return (
     <WorkspaceShell title={text.title}>
       <div className="page">
@@ -71,7 +84,13 @@ export default function InvestigationClient({ caseId }: { caseId: string }) {
             <div className="card metric-card metric-accent"><div className="metric-label">{locale === 'zh-CN' ? '有记录的来源' : 'Documented sources'}</div><div className="metric-value">{bundle.evidence.filter((s) => s.verificationStatus === 'documented').length}</div></div>
             <div className="card metric-card"><div className="metric-label">{locale === 'zh-CN' ? '平台快照' : 'Platform snapshots'}</div><div className="metric-value">{bundle.listings.length}</div></div>
           </div>
-          <div className="workflow-links"><Link className="card-link" href={`/cases/${caseId}/detail`}>{locale === 'zh-CN' ? '案例详情' : 'Case detail'}</Link><Link className="card-link" href={`/rules?caseId=${caseId}`}>{locale === 'zh-CN' ? '浏览所有来源' : 'Browse sources'}</Link><span className="muted">{locale === 'zh-CN' ? '备注保存尚未接入；原始记录只读。' : 'Saving notes is unavailable; original records remain read-only.'}</span></div>
+          <div className="workflow-links"><Link className="card-link" href={`/cases/${caseId}/detail`}>{locale === 'zh-CN' ? '案例详情' : 'Case detail'}</Link><Link className="card-link" href={`/rules?caseId=${caseId}`}>{locale === 'zh-CN' ? '规则与来源' : 'Rules & sources'}</Link>
+            {!summaryVersion && bundle.access?.role === 'owner' && <button type="button" className="btn btn-soft btn-sm" disabled={analyzing} onClick={runAnalysis}>
+              {analyzing ? (locale === 'zh-CN' ? '正在核验…' : 'Analyzing…') : (locale === 'zh-CN' ? '运行证据核验' : 'Run investigation')}
+            </button>}
+          </div>
+          {analysisError && <p className="api-error" role="alert">{analysisError}</p>}
+          <CaseManagementActions bundle={bundle} onSaved={() => retry(true)}/>
           {summaryVersion && <section className="card card-pad investigation-summary"><div className="card-title-row"><span className="card-title">{locale === 'zh-CN' ? '已保存的商家摘要' : 'Saved investigation summary'}</span><span className="badge badge-neutral">v{summaryVersion.version}</span></div><p>{artifactSummary(summaryVersion.content)}</p></section>}
           <div className="dashboard-grid investigation-grid">
             <div className="investigation-column">

@@ -12,11 +12,11 @@ export function filterCases(cases: Case[], filters: CaseFilters) {
 }
 
 // Quote every field and prevent spreadsheet formula execution in merchant-supplied text.
-export function casesCsv(cases: Case[]) {
+export function casesCsv(cases: Case[], includeHeader = true) {
   const cell = (value: string) => `"${(/^[\s\uFEFF]*[=+@\-\t\r]/u.test(value) ? "'" : '') + value.replaceAll('"', '""')}"`;
-  const rows = [['caseId', 'sku', 'channel', 'status', 'feedback', 'feedbackLocale', 'createdAt'],
-    ...cases.map((c) => [c.id, c.sku, c.channel, c.status, c.feedbackText, c.feedbackLocale, c.createdAt])];
-  return '\uFEFF' + rows.map((row) => row.map(cell).join(',')).join('\r\n');
+  const rows = cases.map((c) => [c.id, c.sku, c.channel, c.status, c.feedbackText, c.feedbackLocale, c.createdAt]);
+  if (includeHeader) rows.unshift(['caseId', 'sku', 'channel', 'status', 'feedback', 'feedbackLocale', 'createdAt']);
+  return (includeHeader ? '\uFEFF' : '') + rows.map((row) => row.map(cell).join(',')).join('\r\n');
 }
 
 export function creationSeries(cases: Case[], days: number, now: Date) {

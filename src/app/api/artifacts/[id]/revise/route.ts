@@ -5,7 +5,8 @@ import { getCaseBundle } from "@/lib/db/cases";
 import { createRevision } from "@/lib/db/workflows";
 import { getAiAdapter, ProviderError } from "@/lib/ai/openai-compatible";
 import { checkGeneratedContent, checkListingEvidence } from "@/lib/rules/checker";
-import { validationStatus } from "@/lib/workflows/generation";
+import { sourceIds, validationStatus } from "@/lib/workflows/generation";
+import { applicableReviewRules } from "@/lib/rules/review";
 import { checkAccess, readAuthSession } from "@/lib/server/access";
 import { apiFailure, apiSuccess } from "@/lib/server/http";
 
@@ -36,10 +37,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!current || artifact.latestVersion !== parsed.data.expectedVersion) return apiFailure("CONFLICT", "The artifact changed. Reload and try again.", 409);
     const adapter = getAiAdapter();
     if (!adapter) throw new ProviderError("NOT_CONFIGURED", 503, false);
-    const content = await adapter.revise(bundle, current, parsed.data.promptText, parsed.data.promptLocale);
+    const outputLocale = parsed.data.outputLocale;
+    if (outputLocale && (artifact.platform !== "amazon_de" || artifact.kind !== "listing_correction")) {
+      return apiFailure("INVALID_REQUEST", "German localization is available for Amazon DE drafts.", 400);
+    }
     const listing = artifact.kind === "listing_correction" && artifact.platform
       ? bundle.listings.find((item) => item.platform === artifact.platform)
       : undefined;
+    const draftContext = listing ? { ...bundle, listings: [listing], rules: applicableReviewRules(bundle.rules, listing, bundle.case.synthetic) } : bundle;
+    const content = await adapter.revise(draftContext, current, parsed.data.promptText, parsed.data.promptLocale, outputLocale);
     const findings = [
       ...(listing ? checkListingEvidence(bundle, listing.id) : []),
       ...checkGeneratedContent(bundle, content, listing?.id),
@@ -50,10 +56,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       expectedVersion: parsed.data.expectedVersion,
       promptText: parsed.data.promptText,
       promptLocale: parsed.data.promptLocale,
-      locale: current.locale,
+      locale: outputLocale ?? current.locale,
       languageStatus: current.languageStatus,
       content,
-      sourceIds: current.sourceIds,
+      sourceIds: sourceIds(draftContext),
       validationStatus: validationStatus(bundle, findings),
       findings,
     });

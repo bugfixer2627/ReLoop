@@ -55,7 +55,7 @@ describe('saved artifacts and sources', () => {
     const a = original.artifacts[0];
     const v1 = original.versions[0];
     const bundle = caseBundleSchema.parse({ ...original, artifacts: [{ ...a, latestVersion: 2 }], versions: [v1, { ...v1, id: '00000000-0000-4000-8000-000000000888', version: 2, sourceIds: ['POLICY-MERCHANT-001'], content: { format: 'support_reply', subject: 'Current subject', body: 'Current saved content' } }] });
-    const markup = renderToStaticMarkup(createElement(ArtifactWorkspace, { artifact: bundle.artifacts[0], versions: bundle.versions, findings: [], revisions: [], accessToken: 'test-token', onRefresh: vi.fn() }));
+    const markup = renderToStaticMarkup(createElement(ArtifactWorkspace, { artifact: bundle.artifacts[0], versions: bundle.versions, findings: [], revisions: [], accessToken: 'test-token', onRefresh: vi.fn(), synthetic: true, canEdit: true, canReview: true }));
     expect(markup).toContain('Current saved content');
     expect(markup).toContain('POLICY-MERCHANT-001');
     expect(markup).toContain('Confirm review decision');
